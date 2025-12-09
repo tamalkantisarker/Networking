@@ -1,0 +1,121 @@
+------------------------------------------------------------
+-- 1) USERS TABLE
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+------------------------------------------------------------
+-- 2) GROUPS TABLE (stores all chat groups)
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS groups (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+------------------------------------------------------------
+-- 3) GROUP MEMBERS TABLE (who belongs to which group)
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS group_members (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(group_id, user_id)
+);
+
+------------------------------------------------------------
+-- 4) PRIVATE MESSAGES TABLE
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS private_messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+------------------------------------------------------------
+-- 5) GROUP MESSAGES TABLE
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS group_messages (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+
+-- Friend requests and friendships
+CREATE TABLE IF NOT EXISTS friend_requests (
+    id SERIAL PRIMARY KEY,
+    requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'accepted')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (requester_id, addressee_id)
+);
+
+
+-- Optional: indexes to speed lookups
+CREATE INDEX IF NOT EXISTS idx_friend_requests_requester
+    ON friend_requests (requester_id);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_addressee
+    ON friend_requests (addressee_id);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_status
+    ON friend_requests (status);
+
+
+
+-- Add admin_id column to groups table (tracks who created/owns the group)
+ALTER TABLE groups ADD COLUMN admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+
+-- Optional: Create an index on admin_id for faster lookups of groups by admin
+CREATE INDEX IF NOT EXISTS idx_groups_admin_id ON groups(admin_id);
+
+
+-- 1. DELETE the CSE3111 group (removes it and all associated data)
+DELETE FROM groups WHERE name = 'CSE3111';
+
+-- 2. CREATE the new group_member_requests table (if not already created by init_db)
+CREATE TABLE IF NOT EXISTS group_member_requests (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(group_id, requester_id, target_user_id)
+);
+
+-- 1. DELETE CSE3111 group (removes old data)
+DELETE FROM groups WHERE name = 'CSE3111';
+
+-- 2. CREATE group_member_requests table (if not already created)
+CREATE TABLE IF NOT EXISTS group_member_requests (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(group_id, requester_id, target_user_id)
+);
+
+-- 3. VERIFY tables exist
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' 
+AND table_name IN ('groups', 'group_members', 'group_member_requests', 'users', 'friend_requests');
+
+
+
+
