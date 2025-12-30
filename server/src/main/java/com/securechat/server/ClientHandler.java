@@ -233,16 +233,10 @@ public class ClientHandler implements Runnable {
                 break;
 
             case FILE_INIT:
-                serverState.logNetwork("Flow Control: " + (username != null ? username : "Unknown")
-                        + " starting file send: " + packet.getFileName());
                 serverState.enqueue(packet);
                 break;
 
             case FILE_CHUNK:
-                if (packet.getChunkIndex() % 10 == 0 || packet.getChunkIndex() == packet.getTotalChunks() - 1) {
-                    serverState.logNetwork("Flow Control: Delivering chunk " + (packet.getChunkIndex() + 1) + "/"
-                            + packet.getTotalChunks() + " of " + packet.getFileName());
-                }
                 serverState.enqueue(packet);
                 break;
 
@@ -261,6 +255,8 @@ public class ClientHandler implements Runnable {
             case GROUP_MESSAGE:
             case GROUP_LIST_UPDATE:
             case RESUME_INFO:
+            case FILE_REQ:
+            case FILE_RESP:
                 serverState.enqueue(packet);
                 break;
 

@@ -17,6 +17,8 @@ public enum PacketType {
 
     // File Transfer
     FILE_INIT,
+    FILE_REQ, // Request to Send
+    FILE_RESP, // Permission Granted
     FILE_CHUNK,
     CHUNK_ACK,
     FILE_COMPLETE,

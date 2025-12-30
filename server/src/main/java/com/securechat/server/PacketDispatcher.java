@@ -46,6 +46,7 @@ public class PacketDispatcher implements Runnable {
                 routeDirectly(packet);
                 break;
             case FILE_INIT:
+            case FILE_REQ:
             case FILE_CHUNK:
             case FILE_COMPLETE:
                 if (packet.getGroup() != null) {
@@ -53,6 +54,9 @@ public class PacketDispatcher implements Runnable {
                 } else {
                     routeDirectly(packet);
                 }
+                break;
+            case FILE_RESP:
+                routeDirectly(packet);
                 break;
 
             case GROUP_MESSAGE:
@@ -65,11 +69,10 @@ public class PacketDispatcher implements Runnable {
             case GROUP_ACK:
             case RESUME_INFO:
                 if (type == PacketType.DM_ACK) {
-                    serverState.log("[ACK] DM_ACK for " + packet.getReceiver() + " from " + packet.getSender()
-                            + " [Trans: " + packet.getTransactionId() + "]");
+                    serverState.log("[ACK] DM_ACK for " + packet.getReceiver() + " from " + packet.getSender());
                 } else if (type == PacketType.GROUP_ACK) {
                     serverState.log("[Broadcast ACK] Reassembled by " + packet.getSender() + " for group "
-                            + packet.getGroup() + " [Trans: " + packet.getTransactionId() + "]");
+                            + packet.getGroup());
                 }
                 routeDirectly(packet);
                 break;
@@ -123,6 +126,8 @@ public class PacketDispatcher implements Runnable {
             // Universal Logging for all packet types that carry data/progress
             String typeLabel = switch (packet.getType()) {
                 case FILE_INIT -> "File Init";
+                case FILE_REQ -> "File Req";
+                case FILE_RESP -> "File Resp";
                 case FILE_CHUNK -> "File Chunk";
                 case FILE_COMPLETE -> "File Complete";
                 case CHUNK_ACK -> "ACK";
@@ -135,6 +140,12 @@ public class PacketDispatcher implements Runnable {
             String logMsg = String.format("Routing %s [%d/%d] from %s to %s",
                     typeLabel, (packet.getChunkIndex() + 1), packet.getTotalChunks(),
                     packet.getSender(), packet.getReceiver());
+
+            // Add transaction ID if present (for file transfers and messages)
+            if (packet.getTransactionId() != null) {
+                // logMsg += " [Trans: " + packet.getTransactionId() + "]"; // Verbose trans ID
+                // removed
+            }
 
             // Universal Logging enabled as requested to show Flow Control (Chunk/ACK)
             serverState.logNetwork(logMsg);
@@ -151,9 +162,25 @@ public class PacketDispatcher implements Runnable {
 
         Set<ClientHandler> members = serverState.getGroups().get(groupName);
         if (members != null) {
-            String logMsg = String.format("Broadcasting Group Message [%d/%d] from %s to Group %s",
-                    (packet.getChunkIndex() + 1), packet.getTotalChunks(),
+            // Universal Logging for all packet types that carry data/progress
+            String typeLabel = switch (packet.getType()) {
+                case FILE_INIT -> "File Init";
+                case FILE_REQ -> "File Req";
+                case FILE_RESP -> "File Resp";
+                case FILE_CHUNK -> "File Chunk";
+                case FILE_COMPLETE -> "File Complete";
+                case CHUNK_ACK -> "ACK";
+                case GROUP_MESSAGE -> "Group Msg";
+                case RESUME_INFO -> "Resume Info";
+                case KEY_EXCHANGE -> "Key Exchange";
+                case DM -> "DM (in Group?)";
+                default -> "Data";
+            };
+
+            String logMsg = String.format("Broadcasting %s [%d/%d] from %s to Group %s",
+                    typeLabel, (packet.getChunkIndex() + 1), packet.getTotalChunks(),
                     packet.getSender(), groupName);
+
             serverState.logNetwork(logMsg);
 
             synchronized (members) {

@@ -1,0 +1,240 @@
+/* universal_dark_theme.css - Modern Dark UI (Dribbble Inspired) */
+
+.root {
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+    -fx-text-fill: #B2B2B2;
+    /* Muted Gray Text by default */
+}
+
+/* === Global Background === */
+/* Deep Purple-Gray Gradient */
+.root,
+.main-bg {
+    -fx-background-color: linear-gradient(to bottom right, #2B2B36, #1A1A24);
+}
+
+/* === Cards & Containers === */
+/* Dark Purple-Black Cards */
+.login-card,
+.card-item,
+.content-card {
+    -fx-background-color: #1E1B26;
+    -fx-background-radius: 24px;
+    /* More rounded as per design */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.4), 20, 0, 0, 0);
+    -fx-padding: 30;
+}
+
+.transparent-card {
+    -fx-background-color: rgba(30, 27, 38, 0.5);
+    /* Semi-transparent dark */
+    -fx-background-radius: 24px;
+    -fx-padding: 15;
+}
+
+/* === Headers === */
+.top-bar {
+    -fx-background-color: #1E1B26;
+    /* Solid Dark Header */
+    -fx-padding: 15 25;
+    -fx-border-color: #2F2B3A;
+    /* Subtle border */
+    -fx-border-width: 0 0 1 0;
+}
+
+.title-label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 20px;
+    -fx-font-weight: 800;
+}
+
+.branding-text {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+}
+
+.secondary-label {
+    -fx-text-fill: #8E8E93;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-letter-spacing: 1.0;
+}
+
+/* === Lists (Groups, Users, Logs) === */
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B2B2B2;
+    -fx-padding: 4 0;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: transparent;
+}
+
+/* List Item Card Styling */
+#groupList .list-cell:filled,
+#userListView .list-cell:filled,
+#chatListView .list-cell:filled {
+    -fx-alignment: center-left;
+}
+
+/* The visual 'card' inside the list cell */
+.card-item {
+    -fx-background-color: #252230;
+    /* Slightly lighter than card bg */
+    -fx-background-radius: 12px;
+    -fx-effect: none;
+    /* Flat design */
+    -fx-padding: 10 15;
+    -fx-border-color: #3B364D;
+    -fx-border-radius: 12px;
+}
+
+.card-item:hover {
+    -fx-background-color: #2F2B3A;
+    -fx-border-color: #6358DC;
+    /* Purple Border on Hover */
+    -fx-cursor: hand;
+}
+
+/* === Typography === */
+.welcome-label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+}
+
+.section-label {
+    -fx-text-fill: #8E8E93;
+    /* Muted Label */
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 1.5px;
+    -fx-padding: 0 0 10 0;
+}
+
+.input-label {
+    -fx-text-fill: #B2B2B2;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+/* === Inputs === */
+.modern-input,
+.text-field,
+.password-field {
+    -fx-background-color: #252230;
+    /* Dark Input Bg */
+    -fx-border-color: #3B364D;
+    /* Dark Border */
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 12 15;
+    -fx-font-size: 14px;
+    -fx-text-fill: #FFFFFF;
+    /* White Text */
+    -fx-prompt-text-fill: #5A5A66;
+}
+
+.modern-input:focused,
+.text-field:focused,
+.password-field:focused {
+    -fx-border-color: #6358DC;
+    /* Purple Accent */
+    -fx-background-color: #252230;
+    -fx-effect: dropshadow(three-pass-box, rgba(99, 88, 220, 0.25), 8, 0, 0, 0);
+}
+
+/* === Buttons === */
+/* Primary Action - Purple */
+.gradient-button,
+.button {
+    -fx-background-color: #6358DC;
+    /* Solid Purple Accent */
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 10px;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+
+.gradient-button:hover,
+.button:hover {
+    -fx-background-color: #7166E3;
+    /* Lighter Purple */
+    -fx-effect: dropshadow(three-pass-box, rgba(99, 88, 220, 0.4), 10, 0, 0, 0);
+}
+
+.gradient-button:pressed,
+.button:pressed {
+    -fx-translate-y: 1;
+}
+
+/* Secondary Button (Dark Gray/Outline) */
+.secondary-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #6358DC;
+    -fx-border-color: #6358DC;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-border-width: 1.5;
+}
+
+.secondary-button:hover {
+    -fx-background-color: rgba(99, 88, 220, 0.1);
+}
+
+/* === Chat Bubbles === */
+.message-bubble {
+    -fx-background-radius: 16px;
+    -fx-padding: 10 15;
+    -fx-font-size: 14px;
+    -fx-max-width: 400px;
+}
+
+.message-bubble-me {
+    -fx-background-color: #6358DC;
+    /* Purple Accent */
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 16 16 2 16;
+}
+
+.message-bubble-other {
+    -fx-background-color: #252230;
+    /* Dark Gray */
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 16 16 16 2;
+    -fx-border-color: #3B364D;
+    -fx-border-radius: 16 16 16 2;
+}
+
+/* === Scrollbars (Dark Mode) === */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3B364D;
+    -fx-background-radius: 5px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #5A5A66;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:horizontal {
+    -fx-pref-height: 0;
+    /* Hide horizontal scroll if possible */
+}
+
+/* === Chat Window Specific === */
+.chat-window-content {
+    -fx-background-color: transparent;
+}

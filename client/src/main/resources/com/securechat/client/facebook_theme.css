@@ -1,0 +1,242 @@
+/* facebook_theme.css - Facebook-Inspired UI Design (Blue & Gray) */
+
+.root {
+    -fx-background-color: #F0F2F5;
+    /* Facebook Light Gray Background */
+    -fx-base: #FFFFFF;
+    -fx-accent: #1877F2;
+    /* Facebook Blue */
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+    -fx-font-size: 14px;
+    -fx-text-fill: #050505;
+    /* Facebook Black */
+}
+
+/* Base Containers */
+.main-bg {
+    -fx-background-color: #F0F2F5;
+}
+
+/* Navigation & Layouts */
+/* Navigation & Layouts */
+.top-bar {
+    -fx-background-color: #1877F2;
+    /* Facebook Blue Header */
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 5, 0, 0, 1);
+    -fx-border-color: #166FE5;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #F0F2F5;
+    /* Blends with main bg usually, or white */
+    -fx-background-color: transparent;
+    /* Let root bg show through */
+    -fx-border-width: 0;
+}
+
+/* Typography */
+.label {
+    -fx-text-fill: #050505;
+}
+
+.title-label {
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #FFFFFF;
+    /* White Title on Blue Header */
+}
+
+.secondary-label {
+    -fx-text-fill: #E4E6EB;
+    /* Light Gray on Blue Header */
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+.section-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #65676B;
+    -fx-padding: 5 0;
+    -fx-transform: uppercase;
+}
+
+/* 
+   === CARDS & LISTS (The styling core) === 
+*/
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #050505;
+    -fx-padding: 0;
+    /* Let inner container handle padding */
+}
+
+#groupList,
+#userListView,
+#networkHealthVBox,
+#logVBox,
+#userVBox,
+.scroll-pane .content {
+    -fx-background-color: transparent;
+    -fx-padding: 8;
+}
+
+/* The actual "Card" look for list items */
+/* The actual "Card" look for list items */
+/* FIX: Use :filled pseudo-class to only style populated cells */
+#groupList .list-cell:filled,
+#userListView .list-cell:filled,
+.card-item {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: transparent;
+    -fx-padding: 12 16;
+    -fx-background-insets: 2 4;
+    -fx-font-weight: 500;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 2, 0, 0, 1);
+}
+
+/* Make empty cells transparent */
+#groupList .list-cell:empty,
+#userListView .list-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+/* HOVER EFFECT: "Hovering with Coloring" & Timing */
+#groupList .list-cell:filled:hover,
+#userListView .list-cell:filled:hover,
+.card-item:hover {
+    -fx-background-color: #F2F3F5;
+    /* Darker gray/white mix on hover */
+    -fx-cursor: hand;
+    -fx-text-fill: #1877F2;
+    /* Text turns Blue */
+
+    /* "Timing" Simulation: distinct scale */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 4, 0, 0, 1);
+}
+
+#groupList .list-cell:selected,
+#userListView .list-cell:selected {
+    -fx-background-color: #E7F3FF;
+    /* Very Light Blue Selection */
+    -fx-text-fill: #1877F2;
+    -fx-font-weight: 700;
+}
+
+/* Inputs - Rounded & gray filled */
+.retina-input {
+    -fx-background-color: #F0F2F5;
+    /* Gray fill input */
+    -fx-text-fill: #050505;
+    -fx-prompt-text-fill: #8A8D91;
+    -fx-background-radius: 20px;
+    /* Fully rounded inputs */
+    -fx-padding: 10 16;
+    -fx-border-color: transparent;
+}
+
+.retina-input:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #1877F2;
+    /* Blue border on focus */
+    -fx-border-radius: 20px;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(three-pass-box, rgba(24, 119, 242, 0.2), 4, 0, 0, 0);
+}
+
+/* Buttons - Facebook Blue Pill */
+.retina-button {
+    -fx-background-color: #1877F2;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 10 24;
+    -fx-background-radius: 6px;
+    /* Slightly rounded, not full pill (modern FB) */
+    -fx-cursor: hand;
+}
+
+.retina-button:hover {
+    -fx-background-color: #166FE5;
+    /* Darker Blue */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.retina-button:pressed {
+    -fx-background-color: #155EBF;
+    -fx-translate-y: 1;
+}
+
+.retina-button-secondary {
+    -fx-background-color: #E4E6EB;
+    /* Gray Button */
+    -fx-text-fill: #050505;
+    -fx-background-radius: 6px;
+    -fx-padding: 10 24;
+    -fx-cursor: hand;
+    -fx-font-weight: 600;
+}
+
+.retina-button-secondary:hover {
+    -fx-background-color: #D8DADF;
+    /* Darker Gray Hover */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+/* Chat Bubbles */
+.message-bubble {
+    -fx-background-radius: 18px;
+    /* High radius for smooth bubbles */
+    -fx-padding: 10 16;
+    -fx-max-width: 500px;
+    -fx-font-size: 14px;
+}
+
+.message-bubble-me,
+.message-self {
+    -fx-background-color: #0084FF;
+    /* Messenger Blue */
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 18px 18px 4px 18px;
+}
+
+.message-bubble-other,
+.message-other {
+    -fx-background-color: #E4E6EB;
+    /* Light Gray */
+    -fx-text-fill: #050505;
+    -fx-background-radius: 18px 18px 18px 4px;
+}
+
+/* Scrollbars - Minimalist */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #BCC0C4;
+    -fx-background-radius: 10px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #65676B;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: #F0F2F5;
+    -fx-background-radius: 6px;
+}

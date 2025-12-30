@@ -1,0 +1,91 @@
+/* dribbble_login.css - Modern Single Card Green Theme */
+
+.root {
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+/* Background - Vibrant Green Gradient (from Dribbble left panel) */
+.main-bg {
+    -fx-background-color: linear-gradient(to bottom right, #2D5A27, #1E3F1B);
+    -fx-alignment: center;
+}
+
+/* Centered Login Card */
+.login-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.3), 20, 0, 0, 0);
+    -fx-padding: 25 40;
+    /* Reduced vertical padding */
+    -fx-min-width: 400px;
+    -fx-max-width: 400px;
+    -fx-alignment: center;
+}
+
+/* Typography */
+.welcome-label {
+    -fx-text-fill: #2D5A27;
+    /* Dark Green Title */
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.input-label {
+    -fx-text-fill: #6B7280;
+    /* Gray-500 */
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-padding: 0 0 2 0;
+}
+
+/* Inputs */
+.modern-input {
+    -fx-background-color: #F9FAFB;
+    /* Very light gray fill */
+    -fx-border-color: #D1D5DB;
+    /* Gray-300 */
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 10 15;
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333;
+}
+
+.modern-input:focused {
+    -fx-border-color: #2D8D79;
+    /* Teal Accent */
+    -fx-background-color: #FFFFFF;
+    -fx-effect: dropshadow(three-pass-box, rgba(45, 141, 121, 0.1), 4, 0, 0, 0);
+}
+
+/* Button - Vibrant Green Gradient */
+.gradient-button {
+    -fx-background-color: linear-gradient(to right, #2D8D79, #86C45F);
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 12px;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+}
+
+.gradient-button:hover {
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(three-pass-box, rgba(134, 196, 95, 0.4), 8, 0, 0, 1);
+}
+
+.gradient-button:pressed {
+    -fx-translate-y: 1;
+}
+
+/* Checkbox */
+.check-box {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6B7280;
+}
+
+.check-box .box {
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}

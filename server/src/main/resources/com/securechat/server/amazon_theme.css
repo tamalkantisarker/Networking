@@ -1,0 +1,178 @@
+/* amazon_theme.css - Vibrant Amazon Green Edition (Server Copy) */
+
+.root {
+    -fx-background-color: #F8F9F9;
+    -fx-base: #FFFFFF;
+    -fx-accent: #00C853;
+    /* Vibrant Amazon Green */
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+    -fx-font-size: 14px;
+    -fx-text-fill: #111111;
+}
+
+/* Base */
+.main-bg {
+    -fx-background-color: #F8F9F9;
+}
+
+/* Nav */
+.top-bar {
+    -fx-background-color: #232F3E;
+    /* Amazon Dark Blue */
+    -fx-padding: 15 25;
+    -fx-background-image: linear-gradient(to bottom, #232F3E, #19222D);
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #EAEDED;
+    -fx-border-width: 0 1 0 0;
+}
+
+/* Labels */
+.label {
+    -fx-text-fill: #111111;
+}
+
+.title-label {
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.5), 2, 0, 1, 1);
+}
+
+.secondary-label {
+    -fx-text-fill: #DDDDDD;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+.section-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #555555;
+    -fx-padding: 0 0 5 0;
+}
+
+/* === CARD SHAPES & TIMING EFFECTS === */
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #111111;
+    -fx-padding: 5 10;
+}
+
+#groupList,
+#userListView,
+#networkHealthVBox,
+#logVBox,
+#userVBox,
+.scroll-pane .content {
+    -fx-background-color: transparent;
+    -fx-padding: 5;
+}
+
+#groupList .list-cell,
+#userListView .list-cell,
+.card-item {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8px;
+    /* Smooth Card Shape */
+    -fx-border-radius: 8px;
+    -fx-border-color: #EAEDED;
+    -fx-padding: 12 16;
+    -fx-background-insets: 4 8;
+    -fx-font-weight: 500;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.04), 3, 0, 0, 1);
+}
+
+/* HOVER: Vibrant Green & Scale ("Timing") */
+#groupList .list-cell:filled:hover,
+#userListView .list-cell:filled:hover,
+.card-item:hover {
+    -fx-background-color: #F0FFF4;
+    /* Very Light Green Tint */
+    -fx-border-color: #00C853;
+    /* Vibrant Green Border */
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+    -fx-text-fill: #007E33;
+    /* Darker Green Text */
+
+    /* "Timing" Effect: Scale Up */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-translate-y: -1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 200, 83, 0.25), 8, 0, 0, 2);
+}
+
+#groupList .list-cell:selected,
+#userListView .list-cell:selected {
+    -fx-background-color: #E8F5E9;
+    /* Green selection bg */
+    -fx-border-color: #232F3E;
+    /* Dark Blue Contrast for Selection */
+    -fx-border-width: 2px;
+    -fx-text-fill: #111111;
+    -fx-font-weight: 700;
+}
+
+/* Inputs */
+.retina-input {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #111111;
+    -fx-background-radius: 4px;
+    -fx-padding: 10 14;
+    -fx-border-color: #A6A6A6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+}
+
+.retina-input:focused {
+    -fx-border-color: #00C853;
+    /* Green Focus */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 200, 83, 0.4), 4, 0, 0, 0);
+}
+
+/* Buttons - Vibrant Green Gradient */
+.retina-button {
+    -fx-background-color: linear-gradient(to bottom, #00C853 0%, #009624 100%);
+    -fx-text-fill: #FFFFFF;
+    /* White Text on Green */
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 10 24;
+    -fx-background-radius: 25px;
+    -fx-border-color: #007E33;
+    -fx-border-radius: 25px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 3, 0, 0, 1);
+}
+
+.retina-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #00E676 0%, #00C853 100%);
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 200, 83, 0.4), 6, 0, 0, 2);
+}
+
+.retina-button:pressed {
+    -fx-background-color: #007E33;
+    -fx-translate-y: 1;
+}
+
+/* Scrollbars */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #CCCCCC;
+    -fx-background-radius: 50px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #00C853;
+}

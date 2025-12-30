@@ -1,0 +1,126 @@
+/* server-premium.css - EditorM Design Edition (Forest Green & White) + Tactile Hover */
+
+.root {
+    -fx-background-color: #F8F9FA;
+    /* Light/White Background */
+    -fx-base: #FFFFFF;
+    -fx-accent: #2D5A27;
+    /* Forest Green Accent */
+    -fx-font-family: 'Poppins', 'Inter', 'Segoe UI', system-ui, sans-serif;
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333;
+    /* Dark Charcoal Text */
+}
+
+/* Base Containers */
+.main-bg {
+    -fx-background-color: #F8F9FA;
+}
+
+/* Navigation & Layouts */
+.top-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 15 30;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 5, 0, 0, 1);
+    -fx-border-color: #E5E5E5;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Typography */
+.label {
+    -fx-text-fill: #333333;
+}
+
+.title-label {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #2D5A27;
+}
+
+.section-label {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #2D5A27;
+    /* Forest Green Headers */
+    -fx-padding: 0 0 10 0;
+}
+
+.secondary-label {
+    -fx-text-fill: #757575;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+}
+
+/* 
+   === DASHBOARD CARDS === 
+*/
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #333333;
+    -fx-padding: 5 10;
+}
+
+.list-view {
+    -fx-background-color: transparent;
+    -fx-padding: 5;
+    -fx-border-color: transparent;
+}
+
+/* Common Card Style for all ListViews */
+.list-view .list-cell {
+    -fx-background-color: #FFFFFF;
+    /* White Card */
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: transparent;
+    -fx-padding: 10 15;
+    -fx-background-insets: 2 4;
+    -fx-font-weight: 500;
+    -fx-font-size: 13px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.03), 4, 0, 0, 1);
+}
+
+/* Hover Effect - TACTILE LIFT */
+.list-view .list-cell:filled:hover {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #2D5A27;
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+    -fx-text-fill: #2D5A27;
+
+    /* Physics: Lift Up and Scale */
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-translate-y: -2;
+    -fx-effect: dropshadow(three-pass-box, rgba(45, 90, 39, 0.15), 15, 0, 0, 4);
+}
+
+/* Selected Item */
+.list-view .list-cell:selected {
+    -fx-background-color: #2D5A27;
+    /* Solid Forest Green */
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: 600;
+    -fx-effect: dropshadow(three-pass-box, rgba(45, 90, 39, 0.3), 8, 0, 0, 2);
+}
+
+/* Specific Tweak for Logs */
+#logListView .list-cell {
+    -fx-font-family: 'Consolas', 'Monospaced', monospace;
+    -fx-font-size: 12px;
+    -fx-text-fill: #757575;
+}
+
+/* Scrollbars */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #D6D6D6;
+    -fx-background-radius: 10px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #2D5A27;
+}

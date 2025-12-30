@@ -66,6 +66,12 @@ public class NetworkClient {
     private final Set<String> activeUploads = Collections.synchronizedSet(new HashSet<>());
     private CompletableFuture<String> loginFuture;
 
+    // Permission Handshake: FileID -> Future<Boolean> (True=Approved, False=Denied)
+    private final Map<String, CompletableFuture<Boolean>> pendingFileRequests = new ConcurrentHashMap<>();
+
+    // Tracks which files we (as a receiver) have explicitly accepted.
+    private final Set<String> acceptedFileTransfers = Collections.synchronizedSet(new HashSet<>());
+
     public NetworkClient(String serverIp, int serverPort, ClientController controller) {
         this.serverIp = serverIp;
         this.serverPort = serverPort;
@@ -287,6 +293,14 @@ public class NetworkClient {
                 break;
 
             case FILE_INIT: {
+                if (packet.getGroup() != null) {
+                    // Check if we accepted this file
+                    if (!acceptedFileTransfers.contains(packet.getFileId())) {
+                        System.out.println("[FILTER] Ignoring un-accepted group file: " + packet.getFileName());
+                        return;
+                    }
+                }
+
                 String context = (packet.getGroup() != null) ? "Group " + packet.getGroup() : "Private Chat";
                 String targetKey = (packet.getGroup() != null) ? packet.getGroup() : packet.getSender();
                 String senderName = (packet.getSender() != null) ? packet.getSender() : "Someone";
@@ -321,6 +335,14 @@ public class NetworkClient {
             case FILE_CHUNK: {
                 try {
                     String fileId = packet.getFileId();
+
+                    // FILTER: If this is a group chunk and we typically don't track it, IGNORE IT.
+                    // However, we only have activeDownloads if FILE_INIT passed.
+                    // But if we joined LATE (sending Auto-Recovery), we must also check permission.
+                    if (packet.getGroup() != null && !acceptedFileTransfers.contains(fileId)) {
+                        return; // Silent Drop
+                    }
+
                     RandomAccessFile raf = activeDownloads.get(fileId);
 
                     if (raf == null) {
@@ -467,7 +489,9 @@ public class NetworkClient {
                     System.out.println("[INTEGRITY] Received FILE_COMPLETE for " + packet.getFileName());
 
                     // Ensure file is closed if still held in activeDownloads (e.g. from resume)
-                    RandomAccessFile raf = activeDownloads.remove(fileId);
+                    RandomAccessFile raf = activeDownloads.get(fileId);
+                    acceptedFileTransfers.remove(fileId); // Clean up for next time
+                    activeDownloads.remove(fileId);
                     if (raf != null) {
                         try {
                             raf.getFD().sync();
@@ -535,6 +559,71 @@ public class NetworkClient {
             case USER_LIST_QUERY:
             case HEARTBEAT: // Heartbeat received, do nothing specific, just keeps connection alive
                 break;
+
+            case FILE_REQ: {
+                // Someone wants to send us a file. Ask User.
+                String snder = packet.getSender();
+                String fName = packet.getFileName();
+                String fId = packet.getFileId();
+                String ctx = (packet.getGroup() != null) ? "Group " + packet.getGroup() : "Private Chat";
+
+                Platform.runLater(() -> {
+                    boolean accept = controller.showConfirmationAlert("File Request",
+                            snder + " wants to send '" + fName + "' (" + (packet.getFileSize() / 1024) + " KB) in "
+                                    + ctx + ".\nAccept?");
+
+                    // Send Response
+                    Packet resp = new Packet(PacketType.FILE_RESP, 2);
+                    resp.setFileId(fId);
+                    resp.setReceiver(snder); // Reply to sender
+                    if (packet.getGroup() != null)
+                        resp.setGroup(packet.getGroup());
+
+                    if (accept) {
+                        acceptedFileTransfers.add(fId); // <--- MARK AS ACCEPTED
+                        resp.setPayload("YES".getBytes());
+                        controller.appendChat("System: You accepted file '" + fName + "'");
+                    } else {
+                        acceptedFileTransfers.remove(fId); // Ensure removed
+                        resp.setPayload("NO".getBytes());
+                        controller.appendChat("System: You rejected file '" + fName + "'");
+                    }
+                    sendPacket(resp);
+                });
+                break;
+            }
+
+            case FILE_RESP: {
+                // We asked, they answered.
+                String fId = packet.getFileId();
+                if (pendingFileRequests.containsKey(fId)) {
+                    String ans = new String(packet.getPayload());
+                    boolean approved = "YES".equalsIgnoreCase(ans);
+
+                    CompletableFuture<Boolean> future = pendingFileRequests.get(fId);
+
+                    // LOGIC CHANGE:
+                    // If Private Chat: Forward result immediately (Yes or No).
+                    // If Group Chat:
+                    // - If YES: Complete immediately (Start sending).
+                    // - If NO: IGNORE IT. (Wait for someone else to say Yes).
+
+                    if (packet.getGroup() == null) {
+                        // Private
+                        future.complete(approved);
+                    } else {
+                        // Group
+                        if (approved) {
+                            // Correct: Found at least one person who wants it.
+                            future.complete(true);
+                        } else {
+                            // Ignore "NO" in groups. Let the timeout handle it if NO ONE says yes.
+                            System.out.println("[FLOW] User rejected group file. Waiting for others...");
+                        }
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -653,6 +742,9 @@ public class NetworkClient {
         }
         activeUploads.add(fileId);
 
+        // Generate transaction ID for this file transfer
+        String transactionId = java.util.UUID.randomUUID().toString();
+
         // 1. Check for Resume
         System.out.println("[RESUME] Querying server for existing progress of " + file.getName());
         CompletableFuture<Integer> resumeFuture = new CompletableFuture<>();
@@ -683,7 +775,69 @@ public class NetworkClient {
             lastChunkIndex = -1; // Force Restart
         }
 
-        // 2. Send FILE_INIT
+        // --- REVISED PERMISSION LOGIC ---
+        // Send FILE_REQ
+        Packet req = new Packet(PacketType.FILE_REQ, 2);
+        req.setSender(myUsername);
+        if (isGroup)
+            req.setGroup(target);
+        else
+            req.setReceiver(target);
+        req.setFileId(fileId);
+        req.setFileName(file.getName());
+        req.setFileSize(fileSize);
+        req.setTransactionId(transactionId);
+
+        System.out.println("[FLOW] Asking permission to send " + file.getName() + " to " + target);
+        Platform.runLater(() -> {
+            String msg = "System: Asking " + target + " for permission to send '" + file.getName() + "'...";
+            controller.appendChat(msg);
+            ChatWindowController chatWin = activeWindows.get(target);
+            if (chatWin != null) {
+                chatWin.appendChatMessage(msg);
+            }
+        });
+
+        CompletableFuture<Boolean> permissionFuture = new CompletableFuture<>();
+        pendingFileRequests.put(fileId, permissionFuture); // We need to define this map!
+
+        sendPacket(req);
+
+        try {
+            boolean approved = permissionFuture.get(30, TimeUnit.SECONDS); // 30s timeout for user to click Yes
+            if (!approved) {
+                System.out.println("[FLOW] Permission DENIED for " + file.getName());
+                Platform.runLater(() -> {
+                    String msg = "System: Transfer denied by " + target;
+                    controller.appendChat(msg);
+                    ChatWindowController chatWin = activeWindows.get(target);
+                    if (chatWin != null) {
+                        chatWin.appendChatMessage(msg);
+                    }
+                });
+                activeUploads.remove(fileId);
+                return;
+            }
+        } catch (Exception e) {
+            System.out.println("[FLOW] Permission timeout for " + file.getName());
+            Platform.runLater(
+                    () -> controller.appendChat("System: Transfer timed out waiting for response from " + target));
+            activeUploads.remove(fileId);
+            return;
+        } finally {
+            pendingFileRequests.remove(fileId); // Memory Cleanup
+        }
+
+        Platform.runLater(() -> {
+            String msg = "System: Permission Granted! Starting upload of '" + file.getName() + "'";
+            controller.appendChat(msg);
+            ChatWindowController chatWin = activeWindows.get(target);
+            if (chatWin != null) {
+                chatWin.appendChatMessage(msg);
+            }
+        });
+
+        // 2. Send FILE_INIT (Only after permission!)
         Packet init = new Packet(PacketType.FILE_INIT, 3);
         init.setSender(myUsername != null ? myUsername : "Me");
         if (isGroup) {
@@ -694,6 +848,7 @@ public class NetworkClient {
         init.setFileId(fileId);
         init.setFileName(file.getName());
         init.setFileSize(fileSize);
+        init.setTransactionId(transactionId); // Add transaction ID
         // CRITICAL FIX: FILE_INIT is a SINGLE packet.
         // Do NOT set totalChunks to the file's chunk count, otherwise the receiver
         // will wait for 'totalChunks' packets to arrive before processing this INIT.
@@ -731,6 +886,7 @@ public class NetworkClient {
                 chunk.setFileName(file.getName());
                 chunk.setChunkIndex(currentChunk);
                 chunk.setTotalChunks(totalChunks);
+                chunk.setTransactionId(transactionId); // Add transaction ID
                 chunk.setPayload(chunkData);
 
                 // --- POWERFUL SYSTEM: RETRY LOGIC (Up to 3 times) ---

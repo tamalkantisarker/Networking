@@ -210,6 +210,15 @@ public class ClientController {
         return result.orElse(null);
     }
 
+    public boolean showConfirmationAlert(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        java.util.Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.OK;
+    }
+
     public void updateUserList(String data) {
         if (data == null || data.isEmpty())
             return;

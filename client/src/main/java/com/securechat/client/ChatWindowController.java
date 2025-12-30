@@ -5,19 +5,21 @@ import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.io.IOException;
 
 public class ChatWindowController {
 
     @FXML
     private Label chatTitleLabel;
     @FXML
-    private ListView<HBox> chatListView;
+    private ScrollPane chatScrollPane;
+    @FXML
+    private VBox chatVBox;
     @FXML
     private TextField messageField;
     @FXML
@@ -36,7 +38,7 @@ public class ChatWindowController {
 
         chatTitleLabel.setText(isGroup ? "Group Chat: " + targetName : "Private Chat with: " + targetName);
         stage.setTitle(chatTitleLabel.getText());
-        
+
         stage.setOnCloseRequest(event -> {
             if (networkClient != null) {
                 networkClient.unregisterChatWindow(targetName);
@@ -47,7 +49,8 @@ public class ChatWindowController {
     @FXML
     private void handleSendMessage() {
         String msg = messageField.getText().trim();
-        if (msg.isEmpty()) return;
+        if (msg.isEmpty())
+            return;
 
         if (networkClient != null) {
             if (isGroup) {
@@ -63,8 +66,9 @@ public class ChatWindowController {
 
     @FXML
     private void handleSendFile() {
-        if (networkClient == null) return;
-        
+        if (networkClient == null)
+            return;
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select File to Send");
         File file = fileChooser.showOpenDialog(stage);
@@ -117,18 +121,27 @@ public class ChatWindowController {
             if (message.startsWith("Me:")) {
                 container.setAlignment(Pos.CENTER_RIGHT);
                 label.getStyleClass().add("message-bubble-me");
-                label.setStyle("-fx-background-color: #0078d4; -fx-text-fill: white; -fx-background-radius: 10; -fx-padding: 8;");
+                label.setStyle(
+                        "-fx-background-color: #0078d4; -fx-text-fill: white; -fx-background-radius: 10; -fx-padding: 8;");
             } else if (message.startsWith("System:")) {
                 container.setAlignment(Pos.CENTER);
                 label.setStyle("-fx-text-fill: grey; -fx-font-size: 11px;");
             } else {
                 container.setAlignment(Pos.CENTER_LEFT);
-                label.setStyle("-fx-background-color: #e9e9eb; -fx-text-fill: black; -fx-background-radius: 10; -fx-padding: 8;");
+                label.setStyle(
+                        "-fx-background-color: #e9e9eb; -fx-text-fill: black; -fx-background-radius: 10; -fx-padding: 8;");
             }
 
             container.getChildren().add(label);
-            chatListView.getItems().add(container);
-            chatListView.scrollTo(chatListView.getItems().size() - 1);
+            chatVBox.getChildren().add(container);
+
+            // Smooth auto-scroll to bottom
+            // Force layout recalculation before scrolling
+            chatVBox.layout();
+            chatScrollPane.layout();
+
+            // Scroll to bottom smoothly (1.0 = 100% = bottom)
+            chatScrollPane.setVvalue(1.0);
         });
     }
 }
