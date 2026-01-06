@@ -39,6 +39,11 @@ public class ServerController {
         serverState = ServerState.getInstance();
 
         // 1. Setup Custom Cell Factory for ListView to look like Cards
+        // CRITICAL FIX: Set fixed cell size to eliminate "trembling" and enable smooth
+        // scroll math
+        // Set to 70.0 to accommodate longer filenames/labels without layout jitter
+        networkHealthListView.setFixedCellSize(70.0);
+
         networkHealthListView.setCellFactory(listView -> new ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {

@@ -11,10 +11,10 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.geometry.Insets?>
 
-<StackPane prefHeight="600.0" prefWidth="900.0" styleClass="main-bg" stylesheets="@universal_dribbble_theme.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.securechat.client.ClientController">
+<StackPane styleClass="main-bg" stylesheets="@universal_dribbble_theme.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.securechat.client.ClientController">
    
    <!-- Centered Login Card with STRICT Dimensions -->
-   <VBox styleClass="login-card" spacing="10.0" alignment="CENTER_LEFT" maxWidth="400.0" maxHeight="550.0">
+   <VBox styleClass="login-card" spacing="10.0" alignment="CENTER" maxWidth="400.0" maxHeight="550.0">
        <children>
            <VBox spacing="2.0" alignment="CENTER">
                <Label text="SecureChat" styleClass="welcome-label" style="-fx-text-fill: #2D5A27; -fx-font-size: 24px;" />

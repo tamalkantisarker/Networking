@@ -18,9 +18,10 @@ public class ServerApp extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(ServerApp.class.getResource("server-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 800, 600);
+        Scene scene = new Scene(fxmlLoader.load());
         stage.setTitle("SecureChat Server");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.setOnCloseRequest(e -> System.exit(0)); // Kill threads on close
         stage.show();
 

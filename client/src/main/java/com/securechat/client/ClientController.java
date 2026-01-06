@@ -39,6 +39,9 @@ public class ClientController {
     private ClientApp app;
     private NetworkClient networkClient;
 
+    // Track open file request alerts: fileId -> Alert
+    private final java.util.Map<String, Alert> activeAlerts = new java.util.concurrent.ConcurrentHashMap<>();
+
     public void setApp(ClientApp app) {
         this.app = app;
     }
@@ -185,7 +188,9 @@ public class ClientController {
                     }).start();
                 }
 
+                stage.setMaximized(true);
                 stage.show();
+                javafx.application.Platform.runLater(() -> stage.setMaximized(true));
             } catch (IOException e) {
                 e.printStackTrace();
                 appendChat("System: Failed to open chat window for " + target);
@@ -217,6 +222,39 @@ public class ClientController {
         alert.setContentText(content);
         java.util.Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == ButtonType.OK;
+    }
+
+    /**
+     * Shows a confirmation alert and tracks it by fileId so it can be closed
+     * externally (e.g., on timeout).
+     */
+    public boolean showTrackableConfirmationAlert(String fileId, String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+
+        activeAlerts.put(fileId, alert);
+
+        try {
+            java.util.Optional<ButtonType> result = alert.showAndWait();
+            return result.isPresent() && result.get() == ButtonType.OK;
+        } finally {
+            activeAlerts.remove(fileId);
+        }
+    }
+
+    /**
+     * Programmatically closes an open alert for a specific fileId.
+     */
+    public void closeAlert(String fileId) {
+        Platform.runLater(() -> {
+            Alert alert = activeAlerts.get(fileId);
+            if (alert != null) {
+                alert.setResult(ButtonType.CANCEL); // This triggers the closure of showAndWait()
+                alert.close();
+            }
+        });
     }
 
     public void updateUserList(String data) {

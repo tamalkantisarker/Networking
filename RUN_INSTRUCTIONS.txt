@@ -1,0 +1,23 @@
+# Secure Chat & File Transfer System - Run Instructions
+
+Follow these steps to build and run the project from the root directory ("Networking Project1").
+
+### 1. Build and Install (Run once or after changes to 'common')
+Run this in the root directory:
+mvn install
+
+### 2. Start the Server
+Open a new terminal, navigate to the server directory, and run:
+cd server
+mvn javafx:run
+
+### 3. Start the Client
+Open another terminal, navigate to the client directory, and run:
+cd client
+mvn javafx:run
+
+---
+Note: You can open multiple client terminals to test group chats and multiple users.
+Default credentials for testing:
+- Username: alice / bob / charlie
+- Password: test123 (or any password as the server accepts new users)

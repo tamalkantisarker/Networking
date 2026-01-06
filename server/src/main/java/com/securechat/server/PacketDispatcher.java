@@ -71,7 +71,7 @@ public class PacketDispatcher implements Runnable {
                 if (type == PacketType.DM_ACK) {
                     serverState.log("[ACK] DM_ACK for " + packet.getReceiver() + " from " + packet.getSender());
                 } else if (type == PacketType.GROUP_ACK) {
-                    serverState.log("[Broadcast ACK] Reassembled by " + packet.getSender() + " for group "
+                    serverState.log("[Broadcast ACK] Reassembled by " + packet.getSender() + " for "
                             + packet.getGroup());
                 }
                 routeDirectly(packet);
@@ -125,15 +125,17 @@ public class PacketDispatcher implements Runnable {
         if (receiver != null) {
             // Universal Logging for all packet types that carry data/progress
             String typeLabel = switch (packet.getType()) {
-                case FILE_INIT -> "File Init";
-                case FILE_REQ -> "File Req";
-                case FILE_RESP -> "File Resp";
-                case FILE_CHUNK -> "File Chunk";
-                case FILE_COMPLETE -> "File Complete";
+                case FILE_INIT -> "File Init (AES Protected)";
+                case FILE_REQ -> "File Req (AES Protected)";
+                case FILE_RESP -> "File Resp (AES Protected)";
+                case FILE_CHUNK -> "File Chunk (AES Protected)";
+                case FILE_COMPLETE -> "File Complete (AES Protected)";
                 case CHUNK_ACK -> "ACK";
-                case DM -> "DM";
+                case DM -> "DM (AES Protected)";
+                case DM_ACK -> "DM ACK";
+                case GROUP_ACK -> "Group ACK";
                 case RESUME_INFO -> "Resume Info";
-                case KEY_EXCHANGE -> "Key Exchange";
+                case KEY_EXCHANGE -> "Key Exchange (RSA/AES)";
                 default -> "Data";
             };
 
@@ -164,20 +166,22 @@ public class PacketDispatcher implements Runnable {
         if (members != null) {
             // Universal Logging for all packet types that carry data/progress
             String typeLabel = switch (packet.getType()) {
-                case FILE_INIT -> "File Init";
-                case FILE_REQ -> "File Req";
-                case FILE_RESP -> "File Resp";
-                case FILE_CHUNK -> "File Chunk";
-                case FILE_COMPLETE -> "File Complete";
+                case FILE_INIT -> "File Init (AES Protected)";
+                case FILE_REQ -> "File Req (AES Protected)";
+                case FILE_RESP -> "File Resp (AES Protected)";
+                case FILE_CHUNK -> "File Chunk (AES Protected)";
+                case FILE_COMPLETE -> "File Complete (AES Protected)";
                 case CHUNK_ACK -> "ACK";
-                case GROUP_MESSAGE -> "Group Msg";
+                case GROUP_MESSAGE -> "Group Msg (AES Protected)";
+                case GROUP_ACK -> "Group ACK";
+                case DM_ACK -> "DM ACK";
                 case RESUME_INFO -> "Resume Info";
-                case KEY_EXCHANGE -> "Key Exchange";
+                case KEY_EXCHANGE -> "Key Exchange (RSA/AES)";
                 case DM -> "DM (in Group?)";
                 default -> "Data";
             };
 
-            String logMsg = String.format("Broadcasting %s [%d/%d] from %s to Group %s",
+            String logMsg = String.format("Broadcasting %s [%d/%d] from %s to %s",
                     typeLabel, (packet.getChunkIndex() + 1), packet.getTotalChunks(),
                     packet.getSender(), groupName);
 

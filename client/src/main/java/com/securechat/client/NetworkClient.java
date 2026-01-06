@@ -210,6 +210,20 @@ public class NetworkClient {
         }
     }
 
+    private File getDownloadDirectory() {
+        String userHome = System.getProperty("user.home");
+        File systemDownloads = new File(userHome, "Downloads");
+        if (systemDownloads.exists() && systemDownloads.isDirectory()) {
+            return systemDownloads;
+        }
+        // Fallback to local app downloads folder
+        File localDownloads = new File("downloads");
+        if (!localDownloads.exists()) {
+            localDownloads.mkdir();
+        }
+        return localDownloads;
+    }
+
     private void handlePacket(Packet packet) {
         switch (packet.getType()) {
             case DM:
@@ -316,10 +330,7 @@ public class NetworkClient {
                     }
                 });
                 try {
-                    File downloadDir = new File("downloads");
-                    if (!downloadDir.exists())
-                        downloadDir.mkdir();
-
+                    File downloadDir = getDownloadDirectory();
                     File file = new File(downloadDir, packet.getFileName());
                     RandomAccessFile raf = new RandomAccessFile(file, "rw");
                     activeDownloads.put(packet.getFileId(), raf);
@@ -349,10 +360,7 @@ public class NetworkClient {
                         System.out.println("[RECOVERY] Received mid-transfer chunk for unknown fileId: " + fileId
                                 + ". Attempting auto-recovery...");
                         // Receiver Auto-Recovery: Missing FILE_INIT (happens after reconnection)
-                        File downloadDir = new File("downloads");
-                        if (!downloadDir.exists())
-                            downloadDir.mkdir();
-
+                        File downloadDir = getDownloadDirectory();
                         File file = new File(downloadDir, packet.getFileName() + ".part");
                         raf = new RandomAccessFile(file, "rw");
                         activeDownloads.put(fileId, raf);
@@ -396,10 +404,10 @@ public class NetworkClient {
                                 ChatWindowController chatWin = activeWindows.get(fileKey);
                                 if (chatWin != null) {
                                     chatWin.appendChatMessage("System: File download complete: " + packet.getFileName()
-                                            + " (Saved to ./downloads folder)");
+                                            + " (Saved to " + getDownloadDirectory().getAbsolutePath() + ")");
                                 } else {
                                     controller.appendChat("System: File download complete: " + packet.getFileName()
-                                            + " (Saved to ./downloads folder)");
+                                            + " (Saved to " + getDownloadDirectory().getAbsolutePath() + ")");
                                 }
                             });
                         }
@@ -501,7 +509,7 @@ public class NetworkClient {
                             /* already closed or errored */ }
                     }
 
-                    File downloadDir = new File("downloads");
+                    File downloadDir = getDownloadDirectory();
                     File partFile = new File(downloadDir, packet.getFileName() + ".part");
                     File finalFile = new File(downloadDir, packet.getFileName());
 
@@ -568,7 +576,7 @@ public class NetworkClient {
                 String ctx = (packet.getGroup() != null) ? "Group " + packet.getGroup() : "Private Chat";
 
                 Platform.runLater(() -> {
-                    boolean accept = controller.showConfirmationAlert("File Request",
+                    boolean accept = controller.showTrackableConfirmationAlert(fId, "File Request",
                             snder + " wants to send '" + fName + "' (" + (packet.getFileSize() / 1024) + " KB) in "
                                     + ctx + ".\nAccept?");
 
@@ -589,6 +597,20 @@ public class NetworkClient {
                         controller.appendChat("System: You rejected file '" + fName + "'");
                     }
                     sendPacket(resp);
+                });
+                break;
+            }
+
+            case FILE_ABORT: {
+                // Sender timed out or canceled.
+                String fId = packet.getFileId();
+                String fName = packet.getFileName();
+
+                // CRITICAL FIX: Vanish the window automatically
+                controller.closeAlert(fId);
+
+                Platform.runLater(() -> {
+                    controller.appendChat("System: Request for '" + fName + "' timed out (Too late to click YES).");
                 });
                 break;
             }
@@ -737,225 +759,241 @@ public class NetworkClient {
             totalChunks = 1;
 
         if (activeUploads.contains(fileId)) {
-            Platform.runLater(() -> controller.appendChat("System: Upload already in progress for " + file.getName()));
+            Platform.runLater(() -> controller.appendChat("System: Upload already in progress for '" + file.getName()
+                    + "'. Please wait for the current transfer or its timeout (30s)."));
             return;
         }
-        activeUploads.add(fileId);
 
         // Generate transaction ID for this file transfer
         String transactionId = java.util.UUID.randomUUID().toString();
 
-        // 1. Check for Resume
-        System.out.println("[RESUME] Querying server for existing progress of " + file.getName());
-        CompletableFuture<Integer> resumeFuture = new CompletableFuture<>();
-        pendingResumeRequests.put(fileId, resumeFuture);
-
-        Packet query = new Packet(PacketType.RESUME_QUERY, 1);
-        query.setFileId(fileId);
-        query.setFileName(file.getName());
-        query.setReceiver(target); // Target name (Group or User)
-        sendPacket(query);
-
-        int lastChunkIndex = -1;
         try {
-            // Wait up to 2 seconds for response
-            lastChunkIndex = resumeFuture.get(2, TimeUnit.SECONDS);
-            System.out.println("[RESUME] Server reports last chunk received: " + lastChunkIndex);
-        } catch (Exception e) {
-            System.err.println("[RESUME] Timeout or error waiting for RESUME_INFO: " + e.getMessage());
-        } finally {
-            pendingResumeRequests.remove(fileId);
-        }
+            activeUploads.add(fileId);
 
-        // Fix: Check if file is already fully transferred
-        if (lastChunkIndex + 1 >= totalChunks) {
-            String msg = "System: File '" + file.getName() + "' already exists (100% complete). Re-sending from start.";
-            System.out.println("[RESUME] " + msg);
-            Platform.runLater(() -> controller.appendChat(msg));
-            lastChunkIndex = -1; // Force Restart
-        }
+            // 1. Check for Resume
+            System.out.println("[RESUME] Querying server for existing progress of " + file.getName());
+            CompletableFuture<Integer> resumeFuture = new CompletableFuture<>();
+            pendingResumeRequests.put(fileId, resumeFuture);
 
-        // --- REVISED PERMISSION LOGIC ---
-        // Send FILE_REQ
-        Packet req = new Packet(PacketType.FILE_REQ, 2);
-        req.setSender(myUsername);
-        if (isGroup)
-            req.setGroup(target);
-        else
-            req.setReceiver(target);
-        req.setFileId(fileId);
-        req.setFileName(file.getName());
-        req.setFileSize(fileSize);
-        req.setTransactionId(transactionId);
+            Packet query = new Packet(PacketType.RESUME_QUERY, 1);
+            query.setFileId(fileId);
+            query.setFileName(file.getName());
+            query.setReceiver(target); // Target name (Group or User)
+            sendPacket(query);
 
-        System.out.println("[FLOW] Asking permission to send " + file.getName() + " to " + target);
-        Platform.runLater(() -> {
-            String msg = "System: Asking " + target + " for permission to send '" + file.getName() + "'...";
-            controller.appendChat(msg);
-            ChatWindowController chatWin = activeWindows.get(target);
-            if (chatWin != null) {
-                chatWin.appendChatMessage(msg);
-            }
-        });
-
-        CompletableFuture<Boolean> permissionFuture = new CompletableFuture<>();
-        pendingFileRequests.put(fileId, permissionFuture); // We need to define this map!
-
-        sendPacket(req);
-
-        try {
-            boolean approved = permissionFuture.get(30, TimeUnit.SECONDS); // 30s timeout for user to click Yes
-            if (!approved) {
-                System.out.println("[FLOW] Permission DENIED for " + file.getName());
-                Platform.runLater(() -> {
-                    String msg = "System: Transfer denied by " + target;
-                    controller.appendChat(msg);
-                    ChatWindowController chatWin = activeWindows.get(target);
-                    if (chatWin != null) {
-                        chatWin.appendChatMessage(msg);
-                    }
-                });
-                activeUploads.remove(fileId);
-                return;
-            }
-        } catch (Exception e) {
-            System.out.println("[FLOW] Permission timeout for " + file.getName());
-            Platform.runLater(
-                    () -> controller.appendChat("System: Transfer timed out waiting for response from " + target));
-            activeUploads.remove(fileId);
-            return;
-        } finally {
-            pendingFileRequests.remove(fileId); // Memory Cleanup
-        }
-
-        Platform.runLater(() -> {
-            String msg = "System: Permission Granted! Starting upload of '" + file.getName() + "'";
-            controller.appendChat(msg);
-            ChatWindowController chatWin = activeWindows.get(target);
-            if (chatWin != null) {
-                chatWin.appendChatMessage(msg);
-            }
-        });
-
-        // 2. Send FILE_INIT (Only after permission!)
-        Packet init = new Packet(PacketType.FILE_INIT, 3);
-        init.setSender(myUsername != null ? myUsername : "Me");
-        if (isGroup) {
-            init.setGroup(target);
-        } else {
-            init.setReceiver(target);
-        }
-        init.setFileId(fileId);
-        init.setFileName(file.getName());
-        init.setFileSize(fileSize);
-        init.setTransactionId(transactionId); // Add transaction ID
-        // CRITICAL FIX: FILE_INIT is a SINGLE packet.
-        // Do NOT set totalChunks to the file's chunk count, otherwise the receiver
-        // will wait for 'totalChunks' packets to arrive before processing this INIT.
-        init.setTotalChunks(1);
-        sendPacket(init);
-
-        // 3. Setup ACK tracking for this file
-        pendingAcks.put(fileId, new ConcurrentHashMap<>());
-
-        // 4. Streaming Send with Serial Flow Control (Stop-and-Wait)
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
-            int startFrom = lastChunkIndex + 1;
-            if (startFrom > 0) {
-                FileTransferUtil.skipFully(bis, (long) startFrom * FileTransferUtil.CHUNK_SIZE);
-                Platform.runLater(() -> controller
-                        .appendChat("System: Resuming " + file.getName() + " from chunk " + (startFrom + 1)));
+            int lastChunkIndex = -1;
+            try {
+                // Wait up to 2 seconds for response
+                lastChunkIndex = resumeFuture.get(2, TimeUnit.SECONDS);
+                System.out.println("[RESUME] Server reports last chunk received: " + lastChunkIndex);
+            } catch (Exception e) {
+                System.err.println("[RESUME] Timeout or error waiting for RESUME_INFO: " + e.getMessage());
+            } finally {
+                pendingResumeRequests.remove(fileId);
             }
 
-            byte[] buffer = new byte[FileTransferUtil.CHUNK_SIZE];
-            int bytesRead;
-            int currentChunk = startFrom;
+            // Fix: Check if file is already fully transferred
+            if (lastChunkIndex + 1 >= totalChunks) {
+                String msg = "System: File '" + file.getName()
+                        + "' already exists (100% complete). Re-sending from start.";
+                System.out.println("[RESUME] " + msg);
+                Platform.runLater(() -> controller.appendChat(msg));
+                lastChunkIndex = -1; // Force Restart
+            }
 
-            while ((bytesRead = bis.read(buffer)) != -1) {
-                byte[] chunkData = (bytesRead < FileTransferUtil.CHUNK_SIZE)
-                        ? java.util.Arrays.copyOf(buffer, bytesRead)
-                        : buffer.clone();
+            // --- REVISED PERMISSION LOGIC ---
+            // Send FILE_REQ
+            Packet req = new Packet(PacketType.FILE_REQ, 2);
+            req.setSender(myUsername);
+            if (isGroup)
+                req.setGroup(target);
+            else
+                req.setReceiver(target);
+            req.setFileId(fileId);
+            req.setFileName(file.getName());
+            req.setFileSize(fileSize);
+            req.setTransactionId(transactionId);
 
-                Packet chunk = new Packet(PacketType.FILE_CHUNK, 3);
-                if (isGroup) {
-                    chunk.setGroup(target);
-                } else {
-                    chunk.setReceiver(target);
+            System.out.println("[FLOW] Asking permission to send " + file.getName() + " to " + target);
+            Platform.runLater(() -> {
+                String msg = "System: Asking " + target + " for permission to send '" + file.getName() + "'...";
+                controller.appendChat(msg);
+                ChatWindowController chatWin = activeWindows.get(target);
+                if (chatWin != null) {
+                    chatWin.appendChatMessage(msg);
                 }
-                chunk.setFileId(fileId);
-                chunk.setFileName(file.getName());
-                chunk.setChunkIndex(currentChunk);
-                chunk.setTotalChunks(totalChunks);
-                chunk.setTransactionId(transactionId); // Add transaction ID
-                chunk.setPayload(chunkData);
+            });
 
-                // --- POWERFUL SYSTEM: RETRY LOGIC (Up to 3 times) ---
-                int retryCount = 0;
-                boolean ackReceived = false;
-                while (retryCount < 3 && !ackReceived) {
-                    // Create a future to wait for the ACK of this specific chunk
-                    CompletableFuture<Void> ackFuture = new CompletableFuture<>();
-                    pendingAcks.get(fileId).put(currentChunk, ackFuture);
+            CompletableFuture<Boolean> permissionFuture = new CompletableFuture<>();
+            pendingFileRequests.put(fileId, permissionFuture); // We need to define this map!
 
-                    // Send the chunk
-                    if (retryCount > 0)
-                        System.out.println("[FLOW] RETRY " + retryCount + " for chunk " + currentChunk);
-                    else
-                        System.out.println("[FLOW] Sending chunk " + currentChunk + "/" + (totalChunks - 1));
+            sendPacket(req);
 
-                    sendPacket(chunk);
-
-                    // Wait for ACK (Serial Flow Control)
-                    try {
-                        System.out.println("[FLOW] Waiting for ACK of chunk " + currentChunk + "...");
-                        ackFuture.get(10, TimeUnit.SECONDS);
-                        System.out.println("[FLOW] ACK received for chunk " + currentChunk);
-                        ackReceived = true;
-                    } catch (Exception e) {
-                        retryCount++;
-                        System.err.println("[FLOW CONTROL] Attempt " + retryCount + " failed for chunk " + currentChunk
-                                + ": " + e.getMessage());
-                        if (retryCount >= 3) {
-                            System.err.println(
-                                    "[FLOW CONTROL] Maximum retries reached. ABORTING transfer to prevent corruption.");
-                            Platform.runLater(() -> {
-                                if (controller != null) {
-                                    controller.appendChat("System: Transfer of " + file.getName()
-                                            + " ABORTED due to network timeout.");
-                                }
-                            });
-                            activeUploads.remove(fileId);
-                            return; // Stop the entire transfer
+            try {
+                boolean approved = permissionFuture.get(30, TimeUnit.SECONDS); // 30s timeout for user to click Yes
+                if (!approved) {
+                    System.out.println("[FLOW] Permission DENIED for " + file.getName());
+                    Platform.runLater(() -> {
+                        String msg = "System: Transfer denied by " + target;
+                        controller.appendChat(msg);
+                        ChatWindowController chatWin = activeWindows.get(target);
+                        if (chatWin != null) {
+                            chatWin.appendChatMessage(msg);
                         }
-                    } finally {
-                        pendingAcks.get(fileId).remove(currentChunk);
-                    }
+                    });
+                    return;
                 }
-                currentChunk++;
+            } catch (Exception e) {
+                System.out.println("[FLOW] Permission timeout for " + file.getName());
+                Platform.runLater(
+                        () -> controller.appendChat("System: Transfer timed out waiting for response from " + target));
+
+                // SYNC FIX: Notify receiver that they are too late
+                Packet abort = new Packet(PacketType.FILE_ABORT, 1);
+                abort.setSender(myUsername);
+                if (isGroup)
+                    abort.setGroup(target);
+                else
+                    abort.setReceiver(target);
+                abort.setFileId(fileId);
+                abort.setFileName(file.getName());
+                sendPacket(abort);
+
+                return;
+            } finally {
+                pendingFileRequests.remove(fileId); // Memory Cleanup
             }
 
-            // --- POWERFUL SYSTEM: COMPLETION VERIFICATION ---
-            System.out.println("[INTEGRITY] Calculating hash for " + file.getName());
-            String finalHash = FileTransferUtil.calculateChecksum(file);
-            Packet complete = new Packet(PacketType.FILE_COMPLETE, 1);
+            Platform.runLater(() -> {
+                String msg = "System: Permission Granted! Starting upload of '" + file.getName() + "'";
+                controller.appendChat(msg);
+                ChatWindowController chatWin = activeWindows.get(target);
+                if (chatWin != null) {
+                    chatWin.appendChatMessage(msg);
+                }
+            });
+
+            // 2. Send FILE_INIT (Only after permission!)
+            Packet init = new Packet(PacketType.FILE_INIT, 3);
+            init.setSender(myUsername != null ? myUsername : "Me");
             if (isGroup) {
-                complete.setGroup(target);
+                init.setGroup(target);
             } else {
-                complete.setReceiver(target);
+                init.setReceiver(target);
             }
-            complete.setFileId(fileId);
-            complete.setFileName(file.getName());
-            complete.setPayload(finalHash.getBytes()); // Send hash in payload
-            sendPacket(complete);
-            System.out.println("[INTEGRITY] FILE_COMPLETE sent with hash: " + finalHash);
+            init.setFileId(fileId);
+            init.setFileName(file.getName());
+            init.setFileSize(fileSize);
+            init.setTransactionId(transactionId); // Add transaction ID
+            // CRITICAL FIX: FILE_INIT is a SINGLE packet.
+            // Do NOT set totalChunks to the file's chunk count, otherwise the receiver
+            // will wait for 'totalChunks' packets to arrive before processing this INIT.
+            init.setTotalChunks(1);
+            sendPacket(init);
 
+            // 3. Setup ACK tracking for this file
+            pendingAcks.put(fileId, new ConcurrentHashMap<>());
+
+            // 4. Streaming Send with Serial Flow Control (Stop-and-Wait)
+            try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
+                int startFrom = lastChunkIndex + 1;
+                if (startFrom > 0) {
+                    FileTransferUtil.skipFully(bis, (long) startFrom * FileTransferUtil.CHUNK_SIZE);
+                    Platform.runLater(() -> controller
+                            .appendChat("System: Resuming " + file.getName() + " from chunk " + (startFrom + 1)));
+                }
+
+                byte[] buffer = new byte[FileTransferUtil.CHUNK_SIZE];
+                int bytesRead;
+                int currentChunk = startFrom;
+
+                while ((bytesRead = bis.read(buffer)) != -1) {
+                    byte[] chunkData = (bytesRead < FileTransferUtil.CHUNK_SIZE)
+                            ? java.util.Arrays.copyOf(buffer, bytesRead)
+                            : buffer.clone();
+
+                    Packet chunk = new Packet(PacketType.FILE_CHUNK, 3);
+                    if (isGroup) {
+                        chunk.setGroup(target);
+                    } else {
+                        chunk.setReceiver(target);
+                    }
+                    chunk.setFileId(fileId);
+                    chunk.setFileName(file.getName());
+                    chunk.setChunkIndex(currentChunk);
+                    chunk.setTotalChunks(totalChunks);
+                    chunk.setTransactionId(transactionId); // Add transaction ID
+                    chunk.setPayload(chunkData);
+
+                    // --- POWERFUL SYSTEM: RETRY LOGIC (Up to 3 times) ---
+                    int retryCount = 0;
+                    boolean ackReceived = false;
+                    while (retryCount < 3 && !ackReceived) {
+                        // Create a future to wait for the ACK of this specific chunk
+                        CompletableFuture<Void> ackFuture = new CompletableFuture<>();
+                        pendingAcks.get(fileId).put(currentChunk, ackFuture);
+
+                        // Send the chunk
+                        if (retryCount > 0)
+                            System.out.println("[FLOW] RETRY " + retryCount + " for chunk " + currentChunk);
+                        else
+                            System.out.println("[FLOW] Sending chunk " + currentChunk + "/" + (totalChunks - 1));
+
+                        sendPacket(chunk);
+
+                        // Wait for ACK (Serial Flow Control)
+                        try {
+                            System.out.println("[FLOW] Waiting for ACK of chunk " + currentChunk + "...");
+                            ackFuture.get(10, TimeUnit.SECONDS);
+                            System.out.println("[FLOW] ACK received for chunk " + currentChunk);
+                            ackReceived = true;
+                        } catch (Exception e) {
+                            retryCount++;
+                            System.err.println(
+                                    "[FLOW CONTROL] Attempt " + retryCount + " failed for chunk " + currentChunk
+                                            + ": " + e.getMessage());
+                            if (retryCount >= 3) {
+                                System.err.println(
+                                        "[FLOW CONTROL] Maximum retries reached. ABORTING transfer to prevent corruption.");
+                                Platform.runLater(() -> {
+                                    if (controller != null) {
+                                        controller.appendChat("System: Transfer of " + file.getName()
+                                                + " ABORTED due to network timeout.");
+                                    }
+                                });
+                                return; // Stop the entire transfer
+                            }
+                        } finally {
+                            pendingAcks.get(fileId).remove(currentChunk);
+                        }
+                    }
+                    currentChunk++;
+                }
+
+                // --- POWERFUL SYSTEM: COMPLETION VERIFICATION ---
+                System.out.println("[INTEGRITY] Calculating hash for " + file.getName());
+                String finalHash = FileTransferUtil.calculateChecksum(file);
+                Packet complete = new Packet(PacketType.FILE_COMPLETE, 1);
+                if (isGroup) {
+                    complete.setGroup(target);
+                } else {
+                    complete.setReceiver(target);
+                }
+                complete.setFileId(fileId);
+                complete.setFileName(file.getName());
+                complete.setPayload(finalHash.getBytes()); // Send hash in payload
+                sendPacket(complete);
+                System.out.println("[INTEGRITY] FILE_COMPLETE sent with hash: " + finalHash);
+
+            } finally {
+                pendingAcks.remove(fileId);
+            }
+
+            Platform.runLater(
+                    () -> controller.appendChat("System: Finished sending " + file.getName() + " (Powerful System)"));
         } finally {
-            pendingAcks.remove(fileId);
             activeUploads.remove(fileId);
         }
-
-        Platform.runLater(
-                () -> controller.appendChat("System: Finished sending " + file.getName() + " (Powerful System)"));
     }
 
     private void handleKeyExchange(Packet packet) {

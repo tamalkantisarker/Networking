@@ -271,10 +271,10 @@
 /* === Scrollbars (Rectangular & Smooth) === */
 .scroll-bar {
     -fx-background-color: transparent;
-    -fx-block-increment: 50;
-    /* Faster page scroll */
-    -fx-unit-increment: 25;
-    /* Faster arrow/wheel scroll */
+    -fx-block-increment: 20;
+    /* Reduced from 50 for smoothness */
+    -fx-unit-increment: 5;
+    /* Reduced from 25 for precision */
 }
 
 .scroll-bar:vertical {

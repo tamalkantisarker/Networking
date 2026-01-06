@@ -22,6 +22,7 @@ public enum PacketType {
     FILE_CHUNK,
     CHUNK_ACK,
     FILE_COMPLETE,
+    FILE_ABORT, // Added for UI sync on timeout
 
     // Resume Support
     RESUME_QUERY,

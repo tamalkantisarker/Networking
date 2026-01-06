@@ -2,7 +2,7 @@ package com.securechat.common.protocol;
 
 import java.io.Serializable;
 
-public class Packet implements Serializable {
+public class Packet implements Serializable, Comparable<Packet> {
     private static final long serialVersionUID = 1L;
 
     // Header
@@ -29,6 +29,18 @@ public class Packet implements Serializable {
         this.priority = priority;
         this.chunkIndex = 0; // Default: first chunk
         this.totalChunks = 1; // Default: single chunk message
+    }
+
+    @Override
+    public int compareTo(Packet other) {
+        // Lower priority number = Higher priority (1 > 2 > 3)
+        int priorityComp = Integer.compare(this.priority, other.priority);
+        if (priorityComp == 0) {
+            // Secondary criteria: sequenceNumber for stable (FIFO) ordering within same
+            // priority
+            return Long.compare(this.sequenceNumber, other.sequenceNumber);
+        }
+        return priorityComp;
     }
 
     // Getters and Setters
