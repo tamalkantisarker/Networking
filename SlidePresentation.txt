@@ -1,0 +1,167 @@
+Slide 1: Title Page
+================================================================================
+[ IMAGE PATH: C:\Users\USER\.gemini\antigravity\brain\fac356d5-49a9-4147-93dd-797637fb9cd4\project_title_splash_1767810087177.png ]
+
+Project Title: Secure Chat & File Transfer System 
+Subtitle: A Robust, Encrypted, and Reliable Networking Application
+Presented by: [Team Member 1], [Team Member 2]
+Date: [Current Date]
+
+--------------------------------------------------------------------------------
+
+Slide 2: PROBLEM DOMAIN & MOTIVATIONS
+================================================================================
+**The Problem:**
+*   **Lack of Security:** Standard raw sockets send data in plaintext (vulnerable to sniffing).
+*   **Head-of-Line Blocking:** In basic implementations, sending a large file (e.g., 1GB) blocks all chat messages until the file finishes.
+*   **Unreliability:** Network glitches often cause permanent failure for file transfers (no resume capability).
+
+**Our Motivation:**
+*   To build a system that is **Secure by Design** using modern cryptography (End-to-End Encryption).
+*   To solve traffic congestion by implementing **Priority Queuing** (Chat > Files).
+*   To implement practical **Reliability** features like "Resume Download" for large files.
+
+--------------------------------------------------------------------------------
+
+Slide 3: OBJECTIVES / AIMS
+================================================================================
+1.  **Confidentiality & Integrity:** Ensure no third party can read messages (RSA + AES-GCM).
+2.  **Responsiveness (Traffic Shaping):** Ensure chat messages are delivered instantly, even during heavy file uploads.
+3.  **Resilience:** Implement robust error recovery (File Resume) to handle network interruptions.
+4.  **Usability:** Provide a premium, modern JavaFX GUI with real-time feedback.
+
+--------------------------------------------------------------------------------
+
+Slide 4: PROJECT FEATURES
+================================================================================
+*   **Secure Authentication:** RSA-2048 Handshake & AES-256 Session Keys.
+*   **Real-Time Messaging:** Direct Messages (DM) & Group Chats with instant delivery.
+*   **Resumable File Transfer:**
+    *   Files are split into small chunks.
+    *   Automatic recovery from the last successful chunk after disconnection.
+*   **Priority Traffic Shaping:** Text messages "jump the queue" ahead of file chunks.
+*   **Group Management:** Dynamic creation and joining of groups.
+*   **Universal Chunking:** Uniform processing for improved flow control.
+
+--------------------------------------------------------------------------------
+
+Slide 5: BLOCK DIAGRAM / WORK FLOW
+================================================================================
+💠 [[ SYSTEM ARCHITECTURE & DATA FLOW ]] 💠
+
+[ IMAGE PATH: C:\Users\USER\.gemini\antigravity\brain\fac356d5-49a9-4147-93dd-797637fb9cd4\clean_readable_architecture_diagram_1767810231706.png ]
+*(This is the clean, high-legibility architecture diagram showing the 
+end-to-end flow from Client Alice to the Secure Server and Bob)*
+
+[ Key Architecture Components to Explain during this Slide: ]
+1.  **Distributed Edge Nodes:** Representing the multiple clients (Alice, Bob, etc.)
+2.  **Central Matrix Core:** The Server acting as the security and traffic brain.
+3.  **Encrypted Data Tunnels:** Representing the AES-GCM 256-bit secure pipes.
+4.  **Priority Buffer:** The intelligent scheduling system that prevents lag.
+
+--------------------------------------------------------------------------------
+
+Slide 6: TOOLS & TECHNOLOGIES
+================================================================================
+[ ACTION: Insert the "Software Splash" Image here ]
+
+*   **Language:** Java 21 (JDK 21)
+*   **GUI Framework:** JavaFX 21 (Modular, CSS-styled)
+*   **Build Tool:** Maven (Dependency Management)
+*   **Networking:** Java Socket API (`java.net`), Data Streams
+*   **Concurrency:** `java.util.concurrent` (Executors, PriorityBlockingQueue)
+*   **Cryptography:** `javax.crypto` (AES/GCM/NoPadding), `java.security` (RSA)
+
+--------------------------------------------------------------------------------
+
+Slide 7: APPLIED NETWORKING CONCEPTS (BACKEND)
+================================================================================
+[ IMAGE PATH: C:\Users\USER\.gemini\antigravity\brain\fac356d5-49a9-4147-93dd-797637fb9cd4\networking_concepts_infographic_1767810068715.png ]
+
+We applied these core networking concepts to ensure robustness and efficiency:
+
+1.  **Application-Layer Flow Control (Universal Chunking):**
+    *   *Concept:* Breaking large data streams into fixed-size chunks (e.g., 64KB).
+    *   *Application:* Prevents channel monopolization. Allows the server to interleave chat messages between file chunks.
+
+2.  **Traffic Shaping / Congestion Control (Priority Queuing):**
+    *   *Concept:* Prioritizing time-sensitive data over bulk data.
+    *   *Application:* Implemented a `PriorityBlockingQueue` on the server.
+        *   **Priority 1:** Chat/Control Packets (Processed immediately).
+        *   **Priority 3:** File Chunks (Processed when line is free).
+
+3.  **Reliable Data Transfer (ARQ - Automatic Repeat Request):**
+    *   *Concept:* Acknowledgements and Sequence Numbers.
+    *   *Application:* Receivers send `ACK` packets for saved chunks. Sender tracks `chunkIndex` to resume exactly where it left off (Selective Repeat logic).
+
+4.  **Security (Hybrid Encryption):**
+    *   *Concept:* Combining Asymmetric (RSA) and Symmetric (AES) schemas.
+    *   *Application:* RSA for Key Exchange (slow, secure) + AES-GCM for Data Transport (fast, secure, authenticated).
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+Slide 6: TOOLS & TECHNOLOGIES
+================================================================================
+*   **Language:** Java 21 (JDK 21)
+*   **GUI Framework:** JavaFX 21 (Modular, CSS-styled)
+*   **Build Tool:** Maven (Dependency Management)
+*   **Networking:** Java Socket API (`java.net`), Data Streams
+*   **Concurrency:** `java.util.concurrent` (Executors, PriorityBlockingQueue)
+*   **Cryptography:** `javax.crypto` (AES/GCM/NoPadding), `java.security` (RSA)
+
+--------------------------------------------------------------------------------
+
+Slide 7: APPLIED NETWORKING CONCEPTS (BACKEND)
+================================================================================
+We applied these core networking concepts to ensure robustness and efficiency:
+
+1.  **Application-Layer Flow Control (Universal Chunking):**
+    *   *Concept:* Breaking large data streams into fixed-size chunks (e.g., 64KB).
+    *   *Application:* Prevents channel monopolization. Allows the server to interleave chat messages between file chunks.
+
+2.  **Traffic Shaping / Congestion Control (Priority Queuing):**
+    *   *Concept:* Prioritizing time-sensitive data over bulk data.
+    *   *Application:* Implemented a `PriorityBlockingQueue` on the server.
+        *   **Priority 1:** Chat/Control Packets (Processed immediately).
+        *   **Priority 3:** File Chunks (Processed when line is free).
+
+3.  **Reliable Data Transfer (ARQ - Automatic Repeat Request):**
+    *   *Concept:* Acknowledgements and Sequence Numbers.
+    *   *Application:* Receivers send `ACK` packets for saved chunks. Sender tracks `chunkIndex` to resume exactly where it left off (Selective Repeat logic).
+
+4.  **Security (Hybrid Encryption):**
+    *   *Concept:* Combining Asymmetric (RSA) and Symmetric (AES) schemas.
+    *   *Application:* RSA for Key Exchange (slow, secure) + AES-GCM for Data Transport (fast, secure, authenticated).
+
+--------------------------------------------------------------------------------
+
+Slide 8: MAJOR OUTPUT SCREENSHOTS
+================================================================================
+*[Presenter: Show these screens during live demo]*
+
+**Screenshot 1: Secure Login**
+*   *Caption:* "RSA Handshake & Authentication Phase"
+*   *Visual:* Login screen + Console log showing `Handshake complete. AES Key negotiated.`
+
+**Screenshot 2: Priority in Action**
+*   *Caption:* "Traffic Shaping: Chat message bypassing File Upload"
+*   *Visual:* Server logs showing: `[Priority] High Priority Packet SKIPPED 50 queued File Chunks.`
+
+**Screenshot 3: Resumable File Transfer**
+*   *Caption:* "Integrity Verified & Resume Capability"
+*   *Visual:* File progress bar at 50% -> Disconnect -> Reconnect -> Resumes instantly from 50%.
+
+--------------------------------------------------------------------------------
+
+Slide 9: LIMITATIONS AND FUTURE PLAN
+================================================================================
+**Limitations:**
+*   **In-Memory State:** Server restarts cause loss of active group/user lists (data is transient).
+*   **No Offline Storage:** Messages sent to offline users are currently not stored for later delivery.
+
+**Future Plans:**
+*   **Database Integration:** Implement PostgreSQL to persist user credentials and chat history.
+*   **VoIP Support:** Add UDP-based packet handling for Real-Time Voice/Video calls.
+*   **Mobile App:** Develop an Android client for cross-platform availability.

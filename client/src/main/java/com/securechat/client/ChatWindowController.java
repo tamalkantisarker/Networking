@@ -66,12 +66,16 @@ public class ChatWindowController {
 
     @FXML
     private void handleSendFile() {
-        if (networkClient == null)
+        System.out.println("DEBUG: handleSendFile clicked");
+        if (networkClient == null) {
+            System.err.println("DEBUG: networkClient is NULL!");
             return;
+        }
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select File to Send");
         File file = fileChooser.showOpenDialog(stage);
+        System.out.println("DEBUG: File selected: " + (file != null ? file.getName() : "None"));
 
         if (file != null) {
             new Thread(() -> {

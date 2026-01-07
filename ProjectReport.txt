@@ -1,0 +1,192 @@
+
+Network Programming Project Report
+==================================
+
+1. Overview
+-----------
+This project is a secure, real-time communication system designed to facilitate direct messaging, group chats, and resumable file transfers over a network. It implements a robust Client-Server architecture where the server acts as a central relay and state manager, ensuring that multiple clients can communicate efficiently and securely. The system addresses the need for secure communications by enforcing strong encryption mechanisms (RSA and AES-GCM) at the application layer, ensuring that data remains confidential and tamper-proof while traversing untrusted networks.
+
+2. Motivation
+-------------
+Standard TCP socket programming provides reliable delivery but lacks built-in security, message prioritization, and advanced features like resumable transfers. 
+We decided to choose this project to:
+- Understand how to secure raw socket connections against eavesdropping and tampering using modern cryptography.
+- Solve the "Head-of-Line Blocking" problem where large file transfers stall interactive chat messages.
+- Implement practical reliability features like "Resume Download" which are essential for real-world applications but absent in basic socket tutorials.
+- Gain hands-on experience with multi-threaded server design and state management.
+
+3. Problem Statement
+--------------------
+In a basic networked chat application, several critical issues arise:
+- **Security Logic**: Data sent over raw sockets is plaintext and vulnerable to packet sniffing.
+- **Resource Contention**: Sending a large file (e.g., 1GB) consumes the entire socket bandwidth, causing text messages to be delayed until the file finishes.
+- **Reliability**: If a network glitch occurs during a file transfer, the entire progress is lost, requiring a full restart.
+The problem addressed by this project is to build a system that maintains high responsiveness for chat messages even during heavy file transfers, secures all data end-to-end, and recovers gracefully from network failures.
+
+4. Design Goals/Objectives
+--------------------------
+The primary objectives of this project are:
+- **Confidentiality & Integrity**: Ensure no third party can read or modify messages (achieved via RSA handshake and AES-GCM).
+- **Responsiveness**: Ensure chat messages are delivered instantly, even if a user is uploading a large file (achieved via a Priority Queue system).
+- **Resilience**: Allow file transfers to resume from the last successful chunk after a disconnection.
+- **Usability**: Provide a modern, graphical user interface (GUI) that supports intuitive group management and visual feedback.
+
+5. Project Features
+-------------------
+- **Secure Authentication**: RSA-2048 based handshake to exchange a symmetric AES-256 key for the session.
+- **Real-Time Text Messaging**: Support for Direct Messages (DM) and Group Chats with instant delivery.
+- **Resumable File Transfer**: Large files are split into small chunks. If interrupted, the client checks the server's last received chunk and resumes automatically.
+- **Priority-Based Traffic Shaping**: Text messages are assigned higher priority than file chunks, ensuring they "jump the queue" on the server.
+- **Group Management**: Users can create, join, and leave groups dynamically.
+- **Universal Chunking**: Both text and files are treated as packets, allowing uniform processing and encryption.
+- **End-to-End Encryption (E2EE)**: Direct messages are protected such that even the server cannot read them (using Diffie-Hellman Key Exchange principles).
+
+6. Block Diagram / Work Flow Diagram
+------------------------------------
+[ Conceptual Flow ]
+
++-----------+       (1) Handshake (RSA)        +-----------+
+| Client A  | <------------------------------> |  Server   |
++-----------+                                  +-----------+
+      |                                              ^
+      | (2) Login (AES Encrypted)                    |
+      +----------------------------------------------+
+      
+[ Message Routing Flow ]
+
+1. Sender (Client A) 
+   -> Splits Message/File into Chunks
+   -> Encrypts (AES-GCM)
+   -> Sends to Server
+
+2. Server (ClientHandler Thread)
+   -> Decrypts Packet
+   -> Validates Type (DM/Group/File)
+   -> Enqueues into **PriorityBlockingQueue**
+      (Control Packets = Priority 1, File Chunks = Priority 3)
+
+3. Server (PacketDispatcher Thread)
+   -> Takes highest priority packet
+   -> Routes to Receiver (Client B) or Group Members
+
+4. Receiver (Client B)
+   -> Decrypts Packet
+   -> Reassembles Chunks
+   -> Updates UI / Saves File
+
+7. TOOLS & TECHNOLOGIES
+-----------------------
+- **Programming Language**: Java 21 (JDK 21)
+- **GUI Framework**: JavaFX 21 (Modular UI design)
+- **Build Tool**: Maven (Dependency management)
+- **Networking**: Java I/O (`java.net.Socket`, `DataInputStream`, `DataOutputStream`)
+- **Concurrency**: `java.util.concurrent` (Executors, CompletableFuture, PriorityBlockingQueue)
+- **Cryptography**: `javax.crypto` (AES/GCM/NoPadding), `java.security` (RSA, KeyFactory)
+
+8. Applied Networking Concepts
+------------------------------
+We applied the following core networking concepts in the backend design:
+
+a. **Socket Connection**: 
+   We utilized `java.net.Socket` for persistent TCP connections. Unlike HTTP (stateless), this keeps a stateful session alive for real-time bidirectional communication.
+
+b. **Flow Control & Congestion Control (Application Layer)**:
+   - **Universal Chunking**: Instead of streaming raw bytes, we break all data into fixed-size 1KB chunks. This prevents any single large message from monopolizing the channel.
+   - **Priority Queuing**: We implemented a `PriorityBlockingQueue` on the server.
+     - *Algorithm*: When the `PacketDispatcher` selects the next packet to send, it always picks `Priority 1` (Chat) before `Priority 3` (File Chunks). This effectively implements application-layer Traffic Shaping.
+
+c. **Reliable Data Transfer**:
+   - **Acknowledgements (ACKs)**: We implemented a `CHUNK_ACK` packet type. When a chunk is received and written to disk, the receiver sends an ACK back to the sender.
+   - **Sequence Numbers**: Each chunk has a `chunkIndex`. The receiver tracks `receivedChunksCount` to ensure all parts are present before reassembly.
+   - **Integrity Check**: SHA-256 checksums are calculated for files before sending and after reassembly to verify data integrity.
+
+d. **Security / Encryption**:
+   - **Hybrid Encryption**: We use RSA (slow, asymmetric) only to exchange the AES key. All subsequent traffic uses AES-256 (fast, symmetric).
+   - **GCM Mode**: We use Galois/Counter Mode for AES, which provides both confidentiality (encryption) and integrity (authentication tag), preventing replay attacks.
+
+9. Implementation Details
+-------------------------
+
+### 9.1 Handshake Algorithm (Secure Setup)
+1. **Server**: Starts and generates an RSA Key Pair (2048-bit).
+2. **Client**: Connects to Server.
+3. **Server**: Sends RSA Public Key to Client.
+4. **Client**: Generates a random AES-256 Secret Key.
+5. **Client**: Encrypts the AES Key using the Server's Public Key.
+6. **Client**: Sends encrypted AES Key to Server.
+7. **Server**: Decrypts the AES Key using its Private Key.
+8. **Result**: Both parties now share a secret AES key for the session.
+
+### 9.2 Priority Packet Dispatching Algorithm
+implemented in `PacketDispatcher.java`:
+1. **Queue**: Maintain a `PriorityBlockingQueue<Packet>`.
+2. **Enqueue**: 
+   - If Packet Type is `DM` or `LOGIN`: Set Priority = 1 (High).
+   - If Packet Type is `FILE_CHUNK`: Set Priority = 3 (Low).
+3. **Dispatch Loop**:
+   - `packet = queue.take()` // Blocks until packet available
+   - Because it's a priority queue, if both a Chat and File packet are waiting, the Chat packet is returned first.
+   - Route packet to `packet.getReceiver()`.
+
+### 9.3 File Resume Algorithm
+1. **Interruption**: Transfer stops at Chunk 500 of 1000.
+2. **Restart**: Sender comes back online and initiates file transfer again.
+3. **Negotiation (`RESUME_QUERY`)**:
+   - Sender asks Receiver: "How much of FileID X do you have?"
+   - Receiver checks local storage map (`LSTCI` - Last Successfully Transferred Chunk Index).
+   - Receiver typically finds "500".
+   - Receiver replies with `RESUME_INFO` containing "500".
+4. **Resume**:
+   - Sender sets loop start index `i = 501`.
+   - Transfer continues from the middle, saving bandwidth and time.
+
+### 9.4 Group File Transfer Algorithm (Parallel Unicast)
+1. **Request**: Sender broadcasts `FILE_REQ` to Group.
+2. **Permission**: Each Member individually clicks "Accept".
+3. **Parallel Streams**:
+   - For every accepting member, the Sender spawns a **new thread**.
+   - The Sender transmits the file to Member A (via Server).
+   - The Sender transmits the file to Member B (via Server).
+4. **Server Logging**:
+   - The Server sees these as separate, independent streams.
+   - Logs show `Routing File Chunk ... Sender -> Member A` and `Routing File Chunk ... Sender -> Member B`.
+   - **Asynchronous Independence**: If Member B accepts 10 seconds later, their logs will simply start appearing 10 seconds later, interleaved with Member A's ongoing logs.
+   - **Independent Progress**: Every receiver gets their own fresh stream starting from **Chunk 1**. Member A might be at Chunk 500 while Member B is just starting at Chunk 1.
+   - This "Unicast" design ensures that if one member has a slow connection, it does not slow down the others.
+
+10. Result Analysis
+-------------------
+
+**[Screenshot 1: Authentication Phase]**
+*Description*: The application launches with a login screen asking for Username and Password.
+*Output*: Console logs show:
+> Handshake complete.
+> User logged in: Alice
+
+**[Screenshot 2: Real-Time Chat & Priority]**
+*Description*: Alice and Bob are exchanging messages in a private chat window.
+*Output*: Main Chat Interface shows outgoing messages on the right (blue) and incoming on the left (gray). The server console log demonstrates priority:
+> *** TRAFFIC SHAPING ACTIVE ***
+> [Congestion Control] High Priority Packet (DM, P1) SKIPPED AHEAD of 50 queued File Chunks.
+
+**[Screenshot 3: File Transfer & Verification]**
+*Description*: A progress bar updates as "document.pdf" is uploaded.
+*Output*: Console logs verify integrity:
+> [FLOW] Alice -> Bob : CHUNK 1024
+> [FLOW] Bob -> Alice : ACK 1024
+> [INTEGRITY] 'document.pdf' Verified & Saved ✅
+
+11. Summary of the Project
+--------------------------
+The Secure Chat & File Transfer System successfully implementation a robust networking application in Java. It demonstrates how to move beyond basic socket tutorials by integrating industry-standard security practices (Hybrid Encryption) and complex data flow management (Priority Queues). The project successfully met all design goals: ensuring chat responsiveness under load, protecting user privacy, and handling network instability with resume capabilities.
+
+12. Limitations and Future Plan
+-------------------------------
+**Limitations**:
+- **Scalability**: The current implementation stores groups and user states in memory (`ServerState`). If the server restarts, this transient data is lost.
+- **Offline Messaging**: Messages sent to offline users are currently dropped (except for file resume state which is negotiated live). A database is needed for "Store and Forward".
+
+**Future Plan**:
+- **Database Integration**: Integrate PostgreSQL to persist user credentials, chat history, and group memberships.
+- **Voice/Video Calls**: Extend the packet structure to support UDP streaming for real-time VoIP.
+- **Mobile Client**: Port the Client logic to Android to allow cross-platform communication.

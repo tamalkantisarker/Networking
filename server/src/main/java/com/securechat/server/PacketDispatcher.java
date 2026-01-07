@@ -68,6 +68,11 @@ public class PacketDispatcher implements Runnable {
             case DM_ACK:
             case GROUP_ACK:
             case RESUME_INFO:
+                // Give ACKs highest priority (0) to ensure they appear immediately after their
+                // chunks
+                if (type == PacketType.CHUNK_ACK) {
+                    packet.setPriority(0); // Override to highest priority
+                }
                 if (type == PacketType.DM_ACK) {
                     serverState.log("[ACK] DM_ACK for " + packet.getReceiver() + " from " + packet.getSender());
                 } else if (type == PacketType.GROUP_ACK) {
@@ -143,10 +148,14 @@ public class PacketDispatcher implements Runnable {
                     typeLabel, (packet.getChunkIndex() + 1), packet.getTotalChunks(),
                     packet.getSender(), packet.getReceiver());
 
-            // Add transaction ID if present (for file transfers and messages)
-            if (packet.getTransactionId() != null) {
-                // logMsg += " [Trans: " + packet.getTransactionId() + "]"; // Verbose trans ID
-                // removed
+            // Enhanced logging for FILE_CHUNK and CHUNK_ACK to show parallel processing
+            if (packet.getType() == PacketType.FILE_CHUNK || packet.getType() == PacketType.CHUNK_ACK) {
+                System.out.println(logMsg);
+            }
+
+            // Enhanced logging for FILE_CHUNK and CHUNK_ACK to show parallel processing
+            if (packet.getType() == PacketType.FILE_CHUNK || packet.getType() == PacketType.CHUNK_ACK) {
+                System.out.println(logMsg); // Also print to console for visibility
             }
 
             // Universal Logging enabled as requested to show Flow Control (Chunk/ACK)
@@ -162,8 +171,8 @@ public class PacketDispatcher implements Runnable {
         if (groupName == null)
             return;
 
-        Set<ClientHandler> members = serverState.getGroups().get(groupName);
-        if (members != null) {
+        Set<String> memberNames = serverState.getGroups().get(groupName);
+        if (memberNames != null) {
             // Universal Logging for all packet types that carry data/progress
             String typeLabel = switch (packet.getType()) {
                 case FILE_INIT -> "File Init (AES Protected)";
@@ -187,10 +196,13 @@ public class PacketDispatcher implements Runnable {
 
             serverState.logNetwork(logMsg);
 
-            synchronized (members) {
-                for (ClientHandler member : members) {
-                    if (!member.getUsername().equals(packet.getSender())) {
-                        member.sendPacket(packet);
+            synchronized (memberNames) {
+                for (String memberName : memberNames) {
+                    if (!memberName.equals(packet.getSender())) {
+                        ClientHandler member = serverState.getConnectedUsers().get(memberName);
+                        if (member != null) {
+                            member.sendPacket(packet);
+                        }
                     }
                 }
             }

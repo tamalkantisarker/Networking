@@ -27,8 +27,8 @@ public class ServerState {
     private final Map<String, String> userStatuses = new ConcurrentHashMap<>(); // username -> status
     private final Map<String, String> userCredentials = new ConcurrentHashMap<>(); // username -> hashed password
 
-    // Map<GroupName, Set<ClientHandler>>
-    private final Map<String, Set<ClientHandler>> groups = new ConcurrentHashMap<>();
+    // Map<GroupName, Set<Username>>
+    private final Map<String, Set<String>> groups = new ConcurrentHashMap<>();
 
     // Log Callback (Simple helper for UI)
     private java.util.function.Consumer<String> logCallback;
@@ -91,7 +91,7 @@ public class ServerState {
         return activeClients;
     }
 
-    public Map<String, Set<ClientHandler>> getGroups() {
+    public Map<String, Set<String>> getGroups() {
         return groups;
     }
 
@@ -105,15 +105,29 @@ public class ServerState {
     }
 
     public void joinGroup(String groupName, ClientHandler client) {
-        groups.computeIfPresent(groupName, (k, members) -> {
-            members.add(client);
+        String username = client.getUsername();
+        if (username == null)
+            return;
+
+        groups.compute(groupName, (k, members) -> {
+            if (members == null) {
+                members = Collections.synchronizedSet(new HashSet<>());
+                System.out.println("[Logic] Auto-created group '" + groupName + "' for joiner " + username);
+            }
+            members.add(username);
+            System.out.println("[Logic] " + username + " added to group '" + groupName
+                    + "'. Total members: " + members.size());
             return members;
         });
     }
 
     public void leaveGroup(String groupName, ClientHandler client) {
+        String username = client.getUsername();
+        if (username == null)
+            return;
+
         groups.computeIfPresent(groupName, (k, members) -> {
-            members.remove(client);
+            members.remove(username);
             return members;
         });
     }
@@ -122,9 +136,13 @@ public class ServerState {
      * Helper to get list of groups a user is in.
      */
     public List<String> getUserGroups(ClientHandler client) {
+        String username = client.getUsername();
+        if (username == null)
+            return new ArrayList<>();
+
         List<String> userGroups = new ArrayList<>();
-        for (Map.Entry<String, Set<ClientHandler>> entry : groups.entrySet()) {
-            if (entry.getValue().contains(client)) {
+        for (Map.Entry<String, Set<String>> entry : groups.entrySet()) {
+            if (entry.getValue().contains(username)) {
                 userGroups.add(entry.getKey());
             }
         }
@@ -171,9 +189,15 @@ public class ServerState {
         return new HashMap<>(userStatuses);
     }
 
-    public void removeClient(String username) {
-        activeClients.remove(username);
-        userStatuses.remove(username);
+    public void removeClient(String username, ClientHandler handler) {
+        // Only remove if the current handler matches the one being cleaned up
+        // This prevents old sessions from removing new sessions during cleanup
+        activeClients.remove(username, handler);
+
+        // Only remove status if this was the active handler
+        if (!activeClients.containsKey(username)) {
+            userStatuses.remove(username);
+        }
     }
 
     public void log(String message) {

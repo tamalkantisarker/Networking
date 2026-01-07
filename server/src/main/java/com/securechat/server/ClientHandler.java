@@ -97,7 +97,6 @@ public class ClientHandler implements Runnable {
             case GROUP_JOIN:
             case GROUP_LEAVE:
             case FILE_INIT: // Handle File Init immediately to set up routing or validation
-            case RESUME_QUERY: // Respond to resume query immediately
             case CHUNK_ACK: // Handle ACK immediately to update LSTCI
             case STATUS_UPDATE: // Handle status changes immediately
             case USER_LIST_QUERY: // Handle list requests immediately
@@ -176,6 +175,9 @@ public class ClientHandler implements Runnable {
                 // Update LSTCI: FileId -> Receiver (which is ACK sender) -> ChunkIndex
                 serverState.updateLSTCI(packet.getFileId(), packet.getSender(), packet.getChunkIndex());
 
+                System.out.println("[FLOW] " + packet.getSender() + " -> " + packet.getReceiver() + " : ACK "
+                        + packet.getChunkIndex());
+
                 // Forward ACK to original sender so they know progress
                 serverState.enqueue(packet);
                 break;
@@ -189,47 +191,47 @@ public class ClientHandler implements Runnable {
                 break;
 
             case RESUME_QUERY:
+                // MODIFIED: Forward query to the target client instead of answering from server
+                // state
+                // This ensures we get the actual progress from the target device.
                 String target = packet.getReceiver();
                 String fileId = packet.getFileId();
-                int lastChunk = -1;
 
-                // Check if target is a group
                 if (serverState.getGroups().containsKey(target)) {
-                    Set<ClientHandler> members = serverState.getGroups().get(target);
+                    // For groups, we still use the server-side LSTCI table to calculate min
+                    // progress
+                    // because we can't easily query ALL group members synchronously.
+                    Set<String> memberNames = serverState.getGroups().get(target);
                     int minChunk = Integer.MAX_VALUE;
                     boolean foundAny = false;
 
-                    synchronized (members) {
-                        for (ClientHandler member : members) {
-                            if (member.getUsername() != null) {
-                                int memberProgress = serverState.getLSTCI(fileId, member.getUsername());
-                                if (memberProgress != -1) {
-                                    minChunk = Math.min(minChunk, memberProgress);
-                                    foundAny = true;
-                                } else {
-                                    // At least one member hasn't started
-                                    minChunk = -1;
-                                    foundAny = true;
-                                    break;
-                                }
+                    synchronized (memberNames) {
+                        for (String memberName : memberNames) {
+                            int memberProgress = serverState.getLSTCI(fileId, memberName);
+                            if (memberProgress != -1) {
+                                minChunk = Math.min(minChunk, memberProgress);
+                                foundAny = true;
+                            } else {
+                                minChunk = -1;
+                                foundAny = true;
+                                break;
                             }
                         }
                     }
-                    lastChunk = foundAny ? minChunk : -1;
+                    int lastChunk = foundAny ? minChunk : -1;
+
+                    Packet infoPacket = new Packet(PacketType.RESUME_INFO, 1);
+                    infoPacket.setFileId(fileId);
+                    infoPacket.setReceiver(target);
+                    infoPacket.setChunkIndex(lastChunk);
+                    this.sendPacket(infoPacket);
+                    System.out.println("[RESUME] Responded to Group RESUME_QUERY for " + fileId + ": " + lastChunk);
                 } else {
-                    // Assume single user
-                    lastChunk = serverState.getLSTCI(fileId, target);
+                    // For private chat, FORWARD the query to the target client
+                    System.out.println("[RESUME] Forwarding RESUME_QUERY from " + username + " to " + target);
+                    packet.setSender(this.username);
+                    serverState.enqueue(packet);
                 }
-
-                // Send RESUME_INFO back
-                Packet infoPacket = new Packet(PacketType.RESUME_INFO, 1);
-                infoPacket.setFileId(fileId);
-                infoPacket.setReceiver(target);
-                infoPacket.setChunkIndex(lastChunk);
-
-                this.sendPacket(infoPacket);
-                System.out
-                        .println("Responded to RESUME_QUERY for " + fileId + " (Target: " + target + "): " + lastChunk);
                 break;
 
             case FILE_INIT:
@@ -237,6 +239,8 @@ public class ClientHandler implements Runnable {
                 break;
 
             case FILE_CHUNK:
+                System.out.println("[FLOW] " + packet.getSender() + " -> " + packet.getReceiver() + " : CHUNK "
+                        + packet.getChunkIndex());
                 serverState.enqueue(packet);
                 break;
 
@@ -301,17 +305,17 @@ public class ClientHandler implements Runnable {
 
     private void broadcastUserList() {
         Map<String, String> statusMap = serverState.getAllUserStatuses();
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> entry : statusMap.entrySet()) {
-            if (sb.length() > 0)
-                sb.append("|");
-            sb.append(entry.getKey()).append(":").append(entry.getValue());
-        }
 
-        System.out.println("[LATE_JOINER] Broadcasting user list: " + sb.toString());
+        // Build payload: "User1:Status|User2:Status"
+        String payload = statusMap.entrySet().stream()
+                .map(e -> e.getKey() + ":" + e.getValue())
+                .collect(java.util.stream.Collectors.joining("|"));
 
-        Packet listPacket = new Packet(PacketType.USER_LIST, 2); // Priority 2 as per PDF
-        listPacket.setPayload(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        System.out.println("[LATE_JOINER] Broadcasting user list to " + serverState.getConnectedUsers().size()
+                + " clients: " + payload);
+
+        Packet listPacket = new Packet(PacketType.USER_LIST, 2);
+        listPacket.setPayload(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
         for (ClientHandler handler : serverState.getConnectedUsers().values()) {
             handler.sendPacket(listPacket);
@@ -338,7 +342,7 @@ public class ClientHandler implements Runnable {
 
     private void cleanup() {
         if (username != null) {
-            serverState.removeClient(username);
+            serverState.removeClient(username, this);
             broadcastUserList(); // Update everyone else
             serverState.log("System: " + username + " disconnected.");
             serverState.notifyUserChange();
@@ -399,17 +403,13 @@ public class ClientHandler implements Runnable {
     private void broadcastUserList(String groupName) {
         // Keeping this for group-specific context if needed later,
         // but transitioning main view to global list as requested.
-        Set<ClientHandler> members = serverState.getGroups().get(groupName);
-        if (members == null)
+        Set<String> memberNames = serverState.getGroups().get(groupName);
+        if (memberNames == null)
             return;
 
         List<String> usernames = new ArrayList<>();
-        synchronized (members) {
-            for (ClientHandler member : members) {
-                if (member.getUsername() != null) {
-                    usernames.add(member.getUsername());
-                }
-            }
+        synchronized (memberNames) {
+            usernames.addAll(memberNames);
         }
 
         String payload = String.join(",", usernames);
@@ -417,9 +417,12 @@ public class ClientHandler implements Runnable {
         updatePacket.setGroup(groupName);
         updatePacket.setPayload(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
-        synchronized (members) {
-            for (ClientHandler member : members) {
-                member.sendPacket(updatePacket);
+        synchronized (memberNames) {
+            for (String memberName : memberNames) {
+                ClientHandler member = serverState.getConnectedUsers().get(memberName);
+                if (member != null) {
+                    member.sendPacket(updatePacket);
+                }
             }
         }
     }
