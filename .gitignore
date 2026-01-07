@@ -18,3 +18,8 @@ out/
 build/
 .DS_Store
 Thumbs.db
+
+# Downloads
+*/downloads/
+resume_state.properties
+e2e_keys.properties
